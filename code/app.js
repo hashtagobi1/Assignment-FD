@@ -41,6 +41,10 @@ function initApp() {
     let noteElements = [];
     let renderer = null;
     let context = null;
+    // NEW: Scrolling mode state
+    let scrollMode = 'smooth'; // 'smooth', 'jumping', or 'center'
+    let currentMeasureIndex = 0;
+    let measuresData = []; // Store measure boundaries for jumping mode
 
     // Parse MusicXML using xml-js library for robust parsing
     function parseMusicXML(xmlText) {
@@ -300,6 +304,11 @@ function initApp() {
     function renderMusic() {
         const container = document.getElementById('musicCanvas');
         container.innerHTML = '';
+        // Reset Data to prevent stale data reuse
+        measuresData = [];
+        currentMeasureIndex = 0;
+        scrollPos = 0;
+        document.getElementById('scrollWrapper').style.transform = 'translateX(0px)';
 
         if (!musicData.parts || musicData.parts.length === 0) {
             showStatus('No parts found in MusicXML', 'error');
@@ -376,8 +385,8 @@ function initApp() {
 
             // Calculate total width needed
             let totalWidth = 100;
-            const stavesHeight = 180;
-            const canvasHeight = (musicData.parts.length * stavesHeight) + 150;
+            const stavesHeight = 100;
+            const canvasHeight = (musicData.parts.length * stavesHeight) + 100;
 
             // Pre-calculate all stave widths (use max width across all parts for alignment)
             const staveWidths = [];
@@ -407,14 +416,15 @@ function initApp() {
 
             // Render each part (treble, then bass)
             musicData.parts.forEach((part, partIdx) => {
-                const yPosition = 40 + (partIdx * stavesHeight);
-                let x = 50; // Fixed starting position for consistency
+                const yPosition = 60 + (partIdx * stavesHeight);
+                let x = 100; // Fixed starting position for consistency
 
                 const measures = partMeasures[partIdx];
                 const partStaves = [];
 
                 // Render each measure for this part
                 measures.forEach((measureNotes, measureIdx) => {
+
                     const staveWidth = staveWidths[measureIdx];
                     const stave = new Stave(x, yPosition, staveWidth);
 
@@ -439,6 +449,15 @@ function initApp() {
 
                     // Store stave for connecting later
                     partStaves.push(stave);
+
+                    if (partIdx === 0) {
+                        measuresData.push({
+                            index: measureIdx,
+                            xStart: x,
+                            xEnd: x + staveWidth,
+                            width: staveWidth
+                        });
+                    }
 
                     // Create StaveNote components for this measure
                     const staveNotes = [];
@@ -641,26 +660,26 @@ function initApp() {
         const svg = canvas.querySelector('svg');
 
         if (!svg || noteElements.length === 0) {
-            console.log('⚠️ Cannot position guide line: no SVG or notes');
             return;
         }
 
-        // Find the first measure's clef/key/time signature end position
-        // Look at first 3-8 notes to get a good average of where actual notes start
-        const sampleSize = Math.min(8, Math.max(3, noteElements.length));
-        const firstNotesX = noteElements.slice(0, sampleSize).map(n => n.x).filter(x => x > 0);
-
-        if (firstNotesX.length > 0) {
-            // Use the minimum X (where first note starts) plus small offset
-            const firstNoteX = Math.min(...firstNotesX);
-            const targetX = Math.round(firstNoteX - 20); // Position 20px before first note
-
-            guideLine.style.left = `${targetX}px`;
-            console.log(`📍 Guide line positioned at X=${targetX}px (20px before first note at ${firstNoteX}px)`);
+        // Position based on scroll mode
+        if (scrollMode === 'center') {
+            guideLine.classList.add('center-mode');
+            guideLine.style.left = '50%';
         } else {
-            // Fallback to a reasonable default
-            guideLine.style.left = '200px';
-            console.log(`📍 Guide line positioned at default 200px`);
+            guideLine.classList.remove('center-mode');
+
+            const sampleSize = Math.min(8, Math.max(3, noteElements.length));
+            const firstNotesX = noteElements.slice(0, sampleSize).map(n => n.x).filter(x => x > 0);
+
+            if (firstNotesX.length > 0) {
+                const firstNoteX = Math.min(...firstNotesX);
+                const targetX = Math.round(firstNoteX - 20);
+                guideLine.style.left = `${targetX}px`;
+            } else {
+                guideLine.style.left = '200px';
+            }
         }
     }
 
@@ -746,12 +765,28 @@ function initApp() {
         noteElements.forEach(noteData => {
             if (!noteData.svgGroup || !noteData.components) return;
 
-            const noteWorldX = wrapperRect.left + noteData.x;
+            // Calculate note position based on mode
+            let noteWorldX;
+            if (scrollMode === 'jumping') {
+                // In jumping mode, use virtual scroll position
+                noteWorldX = noteData.x - scrollPos;
+            } else {
+                // In smooth/center modes, use actual visual position
+                noteWorldX = wrapperRect.left + noteData.x;
+            }
+
             const distance = Math.abs(noteWorldX - guideRect.left);
 
             // Count notes that have passed the guide line
-            if (noteWorldX < guideRect.left) {
-                notesPlayed++;
+            if (scrollMode === 'jumping') {
+                // Count based on virtual position
+                if (noteData.x < scrollPos + (guideRect.left - wrapperRect.left)) {
+                    notesPlayed++;
+                }
+            } else {
+                if (noteWorldX < guideRect.left) {
+                    notesPlayed++;
+                }
             }
 
             // Highlight when note is near the guide line (within 50px)
@@ -842,7 +877,7 @@ function initApp() {
                     document.getElementById('startBtn').textContent = 'Replay';
                     document.getElementById('startBtn').disabled = false;
                     document.getElementById('tempoSlider').disabled = false;
-                }, 500); // Small delay to let last note highlight
+                }, 500);
             }
         }
 
@@ -850,7 +885,12 @@ function initApp() {
         if (window.allBeams) {
             window.allBeams.forEach(beamData => {
                 const beamBBox = beamData.element.getBBox();
-                const beamWorldX = wrapperRect.left + beamBBox.x;
+                let beamWorldX;
+                if (scrollMode === 'jumping') {
+                    beamWorldX = beamBBox.x - scrollPos;
+                } else {
+                    beamWorldX = wrapperRect.left + beamBBox.x;
+                }
                 const distance = Math.abs(beamWorldX - guideRect.left);
 
                 if (distance < 100) {
@@ -865,7 +905,12 @@ function initApp() {
         if (window.allCurves) {
             window.allCurves.forEach(curveData => {
                 const curveBBox = curveData.element.getBBox();
-                const curveWorldX = wrapperRect.left + curveBBox.x;
+                let curveWorldX;
+                if (scrollMode === 'jumping') {
+                    curveWorldX = curveBBox.x - scrollPos;
+                } else {
+                    curveWorldX = wrapperRect.left + curveBBox.x;
+                }
                 const distance = Math.abs(curveWorldX - guideRect.left);
 
                 if (distance < 150) {
@@ -890,13 +935,47 @@ function initApp() {
         lastTime = now;
 
         const scrollSpeed = (bpm / 60) * 100;
+        const scrollWrapper = document.getElementById('scrollWrapper');
+
+        // Always update virtual scroll position
         scrollPos += scrollSpeed * delta;
 
-        document.getElementById('scrollWrapper').style.transform =
-            `translateX(-${scrollPos}px)`;
+        if (scrollMode === 'smooth') {
+            // Original smooth scrolling
+            scrollWrapper.style.transition = 'none';
+            scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
+
+        } else if (scrollMode === 'jumping') {
+            // Jumping mode: continue virtual scroll but snap view to measures
+
+            const guideLine = document.querySelector('.guide-line');
+            const guideX = guideLine ? parseInt(guideLine.style.left) || 200 : 200;
+
+            // Find which measure the VIRTUAL scroll position is in
+            const targetMeasure = measuresData.find(m =>
+                scrollPos >= m.xStart - guideX && scrollPos < m.xEnd - guideX
+            );
+
+            if (targetMeasure) {
+                // Check if we've moved to a new measure
+                if (targetMeasure.index !== currentMeasureIndex) {
+                    console.log(`📊 Jumping to measure ${targetMeasure.index + 1}`);
+                    currentMeasureIndex = targetMeasure.index;
+                }
+
+                // Keep view locked to the current measure start
+                const jumpToX = targetMeasure.xStart - guideX + 20;
+                scrollWrapper.classList.add('jumping-mode');
+                scrollWrapper.style.transform = `translateX(-${jumpToX}px)`;
+            }
+
+        } else if (scrollMode === 'center') {
+            // Center focus: guide line in center, smooth scroll
+            scrollWrapper.style.transition = 'none';
+            scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
+        }
 
         highlightNotes();
-
         animationId = requestAnimationFrame(animate);
     }
 
@@ -1002,6 +1081,29 @@ function initApp() {
     document.getElementById('startBtn').addEventListener('click', startGame);
     document.getElementById('pauseBtn').addEventListener('click', pauseGame);
     document.getElementById('resetBtn').addEventListener('click', resetGame);
+    console.log('=== SETTING UP MODE SWITCHER ===');
+    const modeButtons = document.querySelectorAll('.mode-btn');
+    modeButtons.forEach(btn => {
+        btn.addEventListener('click', function () {
+            // Remove active class from all buttons
+            modeButtons.forEach(b => b.classList.remove('active'));
+
+            // Add active class to clicked button
+            this.classList.add('active');
+
+            // Update scroll mode
+            scrollMode = this.dataset.mode;
+            console.log('Scroll mode changed to:', scrollMode);
+
+            // Reset position and reposition guide line
+            if (!isPlaying) {
+                resetGame();
+            }
+            positionGuideLine();
+
+            showStatus(`Scroll mode: ${scrollMode}`, 'success');
+        });
+    });
 
     // NO DEFAULT SONG - Wait for user upload
     showStatus('✅ VexFlow Ready! Upload your MusicXML file to begin.', 'success');

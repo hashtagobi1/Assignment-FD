@@ -40,7 +40,7 @@
         } else {
             console.log('✅ XML parser loaded');
         }
-        
+
     </script>
 </head>
 
@@ -80,7 +80,14 @@
 
             <div class="controls">
 
-                
+                <div class="scroll-mode-control">
+                    <span>Scroll Mode</span>
+                    <div class="mode-buttons">
+                        <button class="mode-btn active" data-mode="smooth">Smooth</button>
+                        <button class="mode-btn" data-mode="jumping">Jumping</button>
+                        <button class="mode-btn" data-mode="center">Center Focus</button>
+                    </div>
+                </div>
                 <div class="tempo-control">
                     <span>Tempo (BPM)</span>
                     <input type="range" class="tempo-slider" id="tempoSlider" min="40" max="180" value="100" step="5">

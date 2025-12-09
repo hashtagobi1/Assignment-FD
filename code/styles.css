@@ -82,7 +82,6 @@ body {
   position: absolute;
   left: 0;
   top: 0;
-  padding-top: 20px;
   will-change: transform;
   min-height: 100%;
   display: flex;
@@ -242,4 +241,61 @@ body {
   text-align: center;
   padding: 40px;
   color: #7f8c8d;
+}
+/* Scroll Mode Control Styles */
+.scroll-mode-control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 25px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.scroll-mode-control > span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 8px;
+  background: white;
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mode-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-dark);
+  transition: all 0.3s ease;
+}
+
+.mode-btn:hover {
+  background: #f0f0f0;
+}
+
+.mode-btn.active {
+  background: var(--accent-green);
+  color: white;
+}
+
+/* Update guide-line for center mode */
+.guide-line.center-mode {
+  left: 50% !important;
+  transform: translateX(-50%);
+}
+
+/* Smooth transition for jumping mode */
+.music-scroll-wrapper.jumping-mode {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
