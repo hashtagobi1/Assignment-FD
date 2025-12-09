@@ -942,7 +942,6 @@ function initApp() {
 
         if (scrollMode === 'smooth') {
             // Original smooth scrolling
-            scrollWrapper.style.transition = 'none';
             scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
 
         } else if (scrollMode === 'jumping') {
@@ -965,13 +964,11 @@ function initApp() {
 
                 // Keep view locked to the current measure start
                 const jumpToX = targetMeasure.xStart - guideX + 20;
-                scrollWrapper.classList.add('jumping-mode');
                 scrollWrapper.style.transform = `translateX(-${jumpToX}px)`;
             }
 
         } else if (scrollMode === 'center') {
             // Center focus: guide line in center, smooth scroll
-            scrollWrapper.style.transition = 'none';
             scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
         }
 
@@ -1019,6 +1016,7 @@ function initApp() {
         isPlaying = false;
         cancelAnimationFrame(animationId);
         scrollPos = 0;
+        currentMeasureIndex = 0;
         document.getElementById('scrollWrapper').style.transform = 'translateX(0)';
         document.getElementById('startBtn').textContent = 'Start';
         document.getElementById('startBtn').disabled = false;
@@ -1085,22 +1083,37 @@ function initApp() {
     const modeButtons = document.querySelectorAll('.mode-btn');
     modeButtons.forEach(btn => {
         btn.addEventListener('click', function () {
-            // Remove active class from all buttons
-            modeButtons.forEach(b => b.classList.remove('active'));
+            const scrollWrapper = document.getElementById('scrollWrapper');
 
-            // Add active class to clicked button
+            // Button styling
+            modeButtons.forEach(b => b.classList.remove('active'));
             this.classList.add('active');
 
             // Update scroll mode
             scrollMode = this.dataset.mode;
             console.log('Scroll mode changed to:', scrollMode);
 
-            // Reset position and reposition guide line
-            if (!isPlaying) {
-                resetGame();
-            }
-            positionGuideLine();
+            // Reset any old inline transition + class
+            scrollWrapper.classList.remove('jumping-mode');
+            scrollWrapper.style.transition = 'none';
 
+            if (scrollMode === 'jumping') {
+                // Turn on the CSS-based easing for jumps
+                scrollWrapper.classList.add('jumping-mode');
+            }
+
+            // Reset scroll state for the new mode
+            scrollPos = 0;
+            currentMeasureIndex = 0;
+            scrollWrapper.style.transform = 'translateX(0px)';
+
+            if (!isPlaying) {
+                // Don't re-run parse/render; just reset playback state
+                document.getElementById('startBtn').textContent = 'Start';
+                document.getElementById('pauseBtn').textContent = 'Pause';
+            }
+
+            positionGuideLine();
             showStatus(`Scroll mode: ${scrollMode}`, 'success');
         });
     });
