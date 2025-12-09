@@ -19,10 +19,13 @@
     -->
     <!-- VexFlow from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
+
     <!-- Robust MusicXML Parser using xml-js library -->
     <script src="https://cdn.jsdelivr.net/npm/xml-js@1.6.11/dist/xml-js.min.js"></script>
 
-    
+    <!-- FastXML Parser -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/fast-xml-parser/dist/fxparser.bundle.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/fast-xml-parser/5.2.5/fxparser.min.js""></script> -->
 
     <script>
         // Verify libraries loaded
@@ -37,6 +40,7 @@
         } else {
             console.log('✅ XML parser loaded');
         }
+        
     </script>
 </head>
 
@@ -75,6 +79,8 @@
             </div>
 
             <div class="controls">
+
+                
                 <div class="tempo-control">
                     <span>Tempo (BPM)</span>
                     <input type="range" class="tempo-slider" id="tempoSlider" min="40" max="180" value="100" step="5">
@@ -89,7 +95,7 @@
         </div>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script src="app.js"></script>
 
 
 </body>
