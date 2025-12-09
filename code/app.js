@@ -981,9 +981,8 @@ function initApp() {
         const startBtn = document.getElementById('startBtn');
 
         // If music finished, reset first
-        if (startBtn.textContent === 'Finished' || startBtn.textContent === 'Replay') {
+        if (startBtn.textContent === 'Replay') {
             resetGame();
-            // Small delay to allow reset to complete
             setTimeout(() => {
                 startGame();
             }, 100);
