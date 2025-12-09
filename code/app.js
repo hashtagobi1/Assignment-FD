@@ -23,7 +23,7 @@ function initApp() {
     showStatus('VexFlow loaded! Ready to render music.', 'success');
 
     // Get VexFlow classes
-    const VF = typeof Vex !== 'undefined' ? Vex.Flow : VexFlow;
+    const VF = window.Vex?.Flow || window.VexFlow;
     const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, StaveConnector, Beam, Annotation, Articulation, Curve } = VF;
 
     // Music data - now supports multiple staves/clefs
