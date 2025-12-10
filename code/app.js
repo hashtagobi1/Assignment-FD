@@ -1045,7 +1045,15 @@ function initApp() {
         playbackBeat = 0;
         currentMeasureIndex = 0;
         lastPlayedNoteIndex = -1;
-        document.getElementById('scrollWrapper').style.transform = 'translateX(0)';
+
+        const scrollWrapper = document.getElementById('scrollWrapper');
+        if (noteElements.length && measuresData.length) {
+            positionGuideLine();
+            updateScrollForCurrentMode();
+        } else if (scrollWrapper) {
+            scrollWrapper.style.transform = 'translateX(0)';
+        }
+
         document.getElementById('startBtn').textContent = 'Start';
         document.getElementById('startBtn').disabled = false;
 
@@ -1060,7 +1068,7 @@ function initApp() {
         document.getElementById('tempoSlider').disabled = false;
 
         // Reset all highlights
-        noteElements.forEach((noteData, index) => {
+        noteElements.forEach((noteData) => {
             if (noteData.svgElement) {
                 noteData.svgElement.setAttribute('fill', noteData.originalFill);
                 noteData.svgElement.setAttribute('stroke', '#000');
