@@ -300,3 +300,27 @@ body {
 .music-scroll-wrapper.jumping-mode {
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
+/* Color Picker */
+.color-control {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 25px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.color-control > span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.color-control input[type="color"] {
+  width: 40px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}

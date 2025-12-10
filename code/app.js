@@ -45,6 +45,8 @@ function initApp() {
     let scrollMode = 'smooth'; // 'smooth', 'jumping', or 'center'
     let currentMeasureIndex = 0;
     let measuresData = []; // Store measure boundaries for jumping mode
+    // Color Pocker
+    let highlightColor = '#2ecc71'; // Default green
 
     // Parse MusicXML using xml-js library for robust parsing
     function parseMusicXML(xmlText) {
@@ -792,7 +794,6 @@ function initApp() {
             // Highlight when note is near the guide line (within 50px)
             if (distance < 50) {
                 // HIGHLIGHT ALL COMPONENTS OF THIS NOTE
-                const highlightColor = '#2ecc71';
                 const glowColor = 'drop-shadow(0 0 8px rgba(46, 204, 113, 0.8))';
 
                 // Highlight noteheads (can be multiple in chords)
@@ -894,7 +895,7 @@ function initApp() {
                 const distance = Math.abs(beamWorldX - guideRect.left);
 
                 if (distance < 100) {
-                    beamData.element.setAttribute('fill', '#2ecc71');
+                    beamData.element.setAttribute('fill', highlightColor);
                 } else {
                     beamData.element.setAttribute('fill', beamData.originalFill);
                 }
@@ -914,7 +915,7 @@ function initApp() {
                 const distance = Math.abs(curveWorldX - guideRect.left);
 
                 if (distance < 150) {
-                    curveData.element.setAttribute('stroke', '#2ecc71');
+                    curveData.element.setAttribute('stroke', highlightColor);
                     curveData.element.setAttribute('stroke-width', '2');
                     curveData.element.style.filter = 'drop-shadow(0 0 8px rgba(46, 204, 113, 0.6))';
                 } else {
@@ -1078,6 +1079,15 @@ function initApp() {
     document.getElementById('startBtn').addEventListener('click', startGame);
     document.getElementById('pauseBtn').addEventListener('click', pauseGame);
     document.getElementById('resetBtn').addEventListener('click', resetGame);
+    // Color Picker
+    // Highlight color picker
+    const highlightInput = document.getElementById('highlightColor');
+    if (highlightInput) {
+        highlightInput.addEventListener('input', (e) => {
+            highlightColor = e.target.value || '#2ecc71';
+            showStatus(`Highlight color: ${highlightColor}`, 'success');
+        });
+    }
     console.log('=== SETTING UP MODE SWITCHER ===');
     const modeButtons = document.querySelectorAll('.mode-btn');
     modeButtons.forEach(btn => {
