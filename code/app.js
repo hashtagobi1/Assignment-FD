@@ -587,7 +587,9 @@ function initApp() {
                             clef: part.clef,
                             slur: noteData.slur,
                             dynamic: noteData.dynamic,
-                            articulation: noteData.articulation
+                            articulation: noteData.articulation,
+                            keys: noteData.keys,
+                            duration: noteData.duration
                         });
 
                         globalNoteIndex++;
@@ -894,6 +896,12 @@ function initApp() {
             const beatDiff = Math.abs(noteData.time - playbackBeat);
 
             if (beatDiff < beatWindow) {
+
+                // Play sound when note is highlighted
+                if (soundEnabled && noteData.noteIndex > lastPlayedNoteIndex) {
+                    playNote(noteData);  // Now this works!
+                    lastPlayedNoteIndex = noteData.noteIndex;
+                }
                 // HIGHLIGHT ALL COMPONENTS OF THIS NOTE
                 const glowFilter = 'drop-shadow(0 0 8px rgba(46, 204, 113, 0.8))';
 
