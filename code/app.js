@@ -50,6 +50,7 @@ function initApp() {
     let soundEnabled = false;
     let synth = null;
     let lastPlayedNoteIndex = -1;
+    let playbackBeat = 0;
 
     // Parse MusicXML using xml-js library for robust parsing
     function parseMusicXML(xmlText) {
@@ -107,9 +108,12 @@ function initApp() {
             musicData.keySignature = keyMap[fifths.toString()] || 'C';
 
             // Extract time signature (global)
-            const beats = xmlDoc.querySelector('time beats')?.textContent || '4';
-            const beatType = xmlDoc.querySelector('time beat-type')?.textContent || '4';
-            musicData.timeSignature = `${beats}/${beatType}`;
+            const beatsText = xmlDoc.querySelector('time beats')?.textContent || '4';
+            const beatTypeText = xmlDoc.querySelector('time beat-type')?.textContent || '4';
+
+            musicData.beatsPerMeasure = parseInt(beatsText, 10) || 4;
+            musicData.beatUnit = parseInt(beatTypeText, 10) || 4;
+            musicData.timeSignature = `${musicData.beatsPerMeasure}/${musicData.beatUnit}`;
 
             console.log(`🎼 Key: ${musicData.keySignature}, Time: ${musicData.timeSignature}`);
 
@@ -381,7 +385,7 @@ function initApp() {
                 const measures = [];
                 let currentMeasure = [];
                 let currentBeats = 0;
-                const beatsPerMeasure = 4;
+                const beatsPerMeasure = musicData.beatsPerMeasure || 4;
 
                 part.notes.forEach(noteData => {
                     const beats = durationToBeats[noteData.duration] || 1;
@@ -490,11 +494,17 @@ function initApp() {
                     partStaves.push(stave);
 
                     if (partIdx === 0) {
+                        const beatsPerMeasure = musicData.beatsPerMeasure || 4;
+                        const beatsStart = measureIdx * beatsPerMeasure;
+                        const beatsEnd = beatsStart + beatsPerMeasure;
+
                         measuresData.push({
                             index: measureIdx,
                             xStart: x,
                             xEnd: x + staveWidth,
-                            width: staveWidth
+                            width: staveWidth,
+                            beatsStart,
+                            beatsEnd
                         });
                     }
 
@@ -692,6 +702,28 @@ function initApp() {
         }
     }
 
+    // Map a musical beat position -> SVG X coordinate
+    function beatToX(beat) {
+        if (!measuresData.length) return 0;
+
+        const beatsPerMeasure = musicData.beatsPerMeasure || 4;
+        const lastMeasure = measuresData[measuresData.length - 1];
+
+        // Clamp before/after the piece
+        if (beat <= 0) return measuresData[0].xStart;
+        if (beat >= lastMeasure.beatsEnd) return lastMeasure.xEnd;
+
+        // Find the measure that contains this beat
+        const measure =
+            measuresData.find(m => beat >= m.beatsStart && beat < m.beatsEnd) ||
+            lastMeasure;
+
+        const localBeat = beat - measure.beatsStart;
+        const t = Math.max(0, Math.min(1, localBeat / beatsPerMeasure));
+
+        return measure.xStart + measure.width * t;
+    }
+
     // Position the guide line dynamically based on rendered content
     function positionGuideLine() {
         const guideLine = document.querySelector('.guide-line');
@@ -791,98 +823,62 @@ function initApp() {
     }
 
     // Highlight ALL note components (noteheads, stems, beams, flags, accidentals)
+    // Highlight ALL note components based on how close they are in *time* to playbackBeat
     function highlightNotes() {
         if (noteElements.length === 0) return;
 
-        const guideLine = document.querySelector('.guide-line');
-        const guideRect = guideLine.getBoundingClientRect();
-        const scrollWrapper = document.getElementById('scrollWrapper');
-        const wrapperRect = scrollWrapper.getBoundingClientRect();
-
+        const beatWindow = 0.25; // highlight notes within ±1/4 beat
         let notesPlayed = 0;
 
-        noteElements.forEach((noteData, index) => {
+        noteElements.forEach(noteData => {
             if (!noteData.svgGroup || !noteData.components) return;
 
-            // Calculate note position based on mode
-            let noteWorldX;
-            if (scrollMode === 'jumping') {
-                // In jumping mode, use virtual scroll position
-                noteWorldX = noteData.x - scrollPos;
-            } else {
-                // In smooth/center modes, use actual visual position
-                noteWorldX = wrapperRect.left + noteData.x;
+            // Count notes that have started before the current beat
+            if (noteData.time <= playbackBeat) {
+                notesPlayed++;
             }
 
-            const distance = Math.abs(noteWorldX - guideRect.left);
+            const beatDiff = Math.abs(noteData.time - playbackBeat);
 
-            // Count notes that have passed the guide line
-            if (scrollMode === 'jumping') {
-                // Count based on virtual position
-                if (noteData.x < scrollPos + (guideRect.left - wrapperRect.left)) {
-                    notesPlayed++;
-                }
-            } else {
-                if (noteWorldX < guideRect.left) {
-                    notesPlayed++;
-                }
-            }
-
-            if (soundEnabled && index > lastPlayedNoteIndex) {
-                const justPassed = scrollMode === 'jumping'
-                    ? (noteData.x < scrollPos + (guideRect.left - wrapperRect.left))
-                    : (noteWorldX < guideRect.left);
-
-                if (justPassed) {
-                    playNote(noteData.note);
-                    lastPlayedNoteIndex = index;
-                }
-            }
-
-
-
-            // Highlight when note is near the guide line (within 50px)
-            if (distance < 50) {
+            if (beatDiff < beatWindow) {
                 // HIGHLIGHT ALL COMPONENTS OF THIS NOTE
-                const glowColor = 'drop-shadow(0 0 8px rgba(46, 204, 113, 0.8))';
+                const glowFilter = 'drop-shadow(0 0 8px rgba(46, 204, 113, 0.8))';
 
-                // Highlight noteheads (can be multiple in chords)
+                // Noteheads (may be multiple for chords)
                 noteData.components.noteheads.forEach(notehead => {
                     notehead.setAttribute('fill', highlightColor);
                     notehead.setAttribute('stroke', highlightColor);
                 });
 
-                // Highlight stems
+                // Stems
                 noteData.components.stems.forEach(stem => {
                     stem.setAttribute('stroke', highlightColor);
                     stem.setAttribute('fill', highlightColor);
                 });
 
-                // Highlight flags
+                // Flags
                 noteData.components.flags.forEach(flag => {
                     flag.setAttribute('fill', highlightColor);
                 });
 
-                // Highlight accidentals
+                // Accidentals
                 noteData.components.accidentals.forEach(acc => {
                     acc.setAttribute('fill', highlightColor);
                 });
 
-                // Highlight annotations (dynamics text like pp, mf, ff)
+                // Dynamics text
                 noteData.components.annotations.forEach(ann => {
                     ann.setAttribute('fill', highlightColor);
                 });
 
-                // Highlight articulations (staccato, accent, etc.)
+                // Articulations
                 noteData.components.articulations.forEach(art => {
                     art.setAttribute('fill', highlightColor);
                 });
 
-                // Add glow effect to entire group
-                noteData.svgGroup.style.filter = glowColor;
-
+                noteData.svgGroup.style.filter = glowFilter;
             } else {
-                // RESET ALL COMPONENTS
+                // RESET ALL COMPONENTS TO ORIGINAL COLORS
                 noteData.components.noteheads.forEach((notehead, i) => {
                     notehead.setAttribute('fill', noteData.originalColors.noteheads[i] || '#000');
                     notehead.setAttribute('stroke', noteData.originalColors.noteheads[i] || '#000');
@@ -918,7 +914,7 @@ function initApp() {
         if (noteCountEl && isPlaying) {
             noteCountEl.textContent = `${notesPlayed} / ${noteElements.length}`;
 
-            // Check if all notes have been played
+            // If we've passed all notes, stop
             if (notesPlayed >= noteElements.length) {
                 console.log('🎵 All notes played! Stopping...');
                 setTimeout(() => {
@@ -928,102 +924,38 @@ function initApp() {
                     document.getElementById('startBtn').textContent = 'Replay';
                     document.getElementById('startBtn').disabled = false;
                     document.getElementById('tempoSlider').disabled = false;
-                }, 500);
+                }, 300);
             }
-        }
-
-        // Highlight beams near the guide line
-        if (window.allBeams) {
-            window.allBeams.forEach(beamData => {
-                const beamBBox = beamData.element.getBBox();
-                let beamWorldX;
-                if (scrollMode === 'jumping') {
-                    beamWorldX = beamBBox.x - scrollPos;
-                } else {
-                    beamWorldX = wrapperRect.left + beamBBox.x;
-                }
-                const distance = Math.abs(beamWorldX - guideRect.left);
-
-                if (distance < 100) {
-                    beamData.element.setAttribute('fill', highlightColor);
-                } else {
-                    beamData.element.setAttribute('fill', beamData.originalFill);
-                }
-            });
-        }
-
-        // Highlight slurs/curves near the guide line
-        if (window.allCurves) {
-            window.allCurves.forEach(curveData => {
-                const curveBBox = curveData.element.getBBox();
-                let curveWorldX;
-                if (scrollMode === 'jumping') {
-                    curveWorldX = curveBBox.x - scrollPos;
-                } else {
-                    curveWorldX = wrapperRect.left + curveBBox.x;
-                }
-                const distance = Math.abs(curveWorldX - guideRect.left);
-
-                if (distance < 150) {
-                    curveData.element.setAttribute('stroke', highlightColor);
-                    curveData.element.setAttribute('stroke-width', '2');
-                    curveData.element.style.filter = 'drop-shadow(0 0 8px rgba(46, 204, 113, 0.6))';
-                } else {
-                    curveData.element.setAttribute('stroke', curveData.originalStroke);
-                    curveData.element.setAttribute('stroke-width', '1');
-                    curveData.element.style.filter = 'none';
-                }
-            });
         }
     }
 
-    // Animation
+    // Animation loop – advance in beats, then scroll so that beat is under the green line
     function animate() {
         if (!isPlaying) return;
 
         const now = Date.now();
-        const delta = (now - lastTime) / 1000;
+        const delta = (now - lastTime) / 1000; // seconds
         lastTime = now;
 
-        const scrollSpeed = (bpm / 60) * 100;
+        // Advance musical position in beats
+        const beatsPerSecond = bpm / 60;
+        playbackBeat += beatsPerSecond * delta;
+
         const scrollWrapper = document.getElementById('scrollWrapper');
 
-        // Always update virtual scroll position
-        scrollPos += scrollSpeed * delta;
+        // Where in SVG should we be for this beat?
+        const targetX = beatToX(playbackBeat);
 
-        if (scrollMode === 'smooth') {
-            // Original smooth scrolling
-            scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
+        // We keep the guide line at a fixed pixel X (200px)
+        const guideX = 200;
+        scrollPos = targetX - guideX;
 
-        } else if (scrollMode === 'jumping') {
-            // Jumping mode: continue virtual scroll but snap view to measures
+        // Apply scroll transform
+        scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
 
-            const guideLine = document.querySelector('.guide-line');
-            const guideX = guideLine ? parseInt(guideLine.style.left) || 200 : 200;
-
-            // Find which measure the VIRTUAL scroll position is in
-            const targetMeasure = measuresData.find(m =>
-                scrollPos >= m.xStart - guideX && scrollPos < m.xEnd - guideX
-            );
-
-            if (targetMeasure) {
-                // Check if we've moved to a new measure
-                if (targetMeasure.index !== currentMeasureIndex) {
-                    console.log(`📊 Jumping to measure ${targetMeasure.index + 1}`);
-                    currentMeasureIndex = targetMeasure.index;
-                }
-
-                // Keep view locked to the current measure start
-                const jumpToX = targetMeasure.xStart - guideX + 20;
-                scrollWrapper.style.transform = `translateX(-${jumpToX}px)`;
-            }
-
-        } else if (scrollMode === 'center') {
-            // Center focus: guide line in center, smooth scroll
-            scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
-        }
-
+        // Update highlights
         highlightNotes();
+
         animationId = requestAnimationFrame(animate);
     }
 
@@ -1066,6 +998,7 @@ function initApp() {
         isPlaying = false;
         cancelAnimationFrame(animationId);
         scrollPos = 0;
+        playbackBeat = 0;
         currentMeasureIndex = 0;
         lastPlayedNoteIndex = -1;
         document.getElementById('scrollWrapper').style.transform = 'translateX(0)';
