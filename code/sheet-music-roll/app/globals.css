@@ -1,1 +1,473 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Fredoka:wght@400;500;600;700&display=swap");
+
+:root {
+  --bg-cream: #fffaf2;
+  --accent-green: #00c98b;
+  --accent-blue: #4b8cff;
+  --accent-yellow: #ffd75e;
+  --accent-pink: #ff7eb8;
+  --text-dark: #273043;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Fredoka", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  background: radial-gradient(
+    circle at top left,
+    #fff4d9 0,
+    #fffaf2 45%,
+    #ffeaf5 100%
+  );
+  color: var(--text-dark);
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  background: white;
+  border-bottom: 0;
+  padding: 10px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+  border-radius: 0 0 18px 18px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+/* -----------------------------------------------------
+ * WORK TITLE / COMPOSER META
+ * --------------------------------------------------- */
+.work-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.work-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ff7eb8; /* fun pink for kids */
+}
+
+.work-composer {
+  font-size: 12px;
+  font-weight: 500;
+  color: #7f8c8d;
+}
+
+.title {
+  font-family: "Crimson Pro", serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #25324a;
+}
+
+.score-display {
+  display: flex;
+  gap: 12px;
+}
+
+.score-item {
+  background: #f5f7ff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+}
+
+.score-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #7f8c8d;
+  letter-spacing: 0.06em;
+}
+
+.score-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-green);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  font-size: 12px;
+}
+
+.control-group label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: #000;
+}
+
+.upload-group {
+  min-width: 190px;
+}
+
+.file-label {
+  display: inline-block;
+  padding: 6px 14px;
+  background: var(--accent-blue);
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 12px;
+  text-align: center;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-name {
+  font-size: 11px;
+  color: #7f8c8d;
+  max-width: 210px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.select-control {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  background: #fdfdfd;
+  font-size: 12px;
+}
+
+.color-group input[type="color"] {
+  width: 32px;
+  height: 24px;
+  padding: 0;
+  border-radius: 4px;
+  border: 1px solid #d0d7de;
+  cursor: pointer;
+}
+
+.tempo-group {
+  min-width: 220px;
+}
+
+.tempo-group .tempo-slider {
+  width: 100%;
+}
+
+.tempo-group .tempo-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-green);
+  text-align: right;
+}
+
+.button-group {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.main-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sheet-music-viewport {
+  flex: 1;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  align-items: flex-start;
+}
+
+.music-scroll-wrapper {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+  min-height: auto;
+  display: flex;
+  align-items: flex-start;
+}
+
+#musicCanvas {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding: 40px;
+}
+
+.guide-line {
+  position: absolute;
+  left: 200px;
+  /* Will be positioned dynamically by JavaScript */
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(46, 204, 113, 0.9) 10%,
+    rgba(46, 204, 113, 0.9) 90%,
+    transparent 100%
+  );
+  box-shadow: 0 0 20px rgba(46, 204, 113, 0.7), 0 0 40px rgba(46, 204, 113, 0.4);
+  z-index: 50;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.controls-container {
+  background: white;
+  border-top: 2px solid #e0e0e0;
+  padding: 25px 40px 35px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+}
+
+.file-upload-section {
+  max-width: 600px;
+  margin: 0 auto 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #bdc3c7;
+  text-align: center;
+}
+
+#toastContainer {
+  position: fixed;
+  top: 72px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+}
+
+.toast {
+  min-width: 220px;
+  max-width: 320px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  background: #ffffff;
+  border-left: 4px solid #bdc3c7;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.success {
+  border-left-color: #2ecc71;
+}
+
+.toast.error {
+  border-left-color: #e74c3c;
+}
+
+.toast.info {
+  border-left-color: #3498db;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.tempo-control {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 25px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.tempo-slider {
+  width: 200px;
+}
+
+.tempo-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent-green);
+  min-width: 85px;
+}
+
+.btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.btn-primary {
+  background: var(--accent-green);
+  color: white;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #ecf0f1;
+  color: var(--text-dark);
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+}
+/* Scroll Mode Control Styles */
+.scroll-mode-control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 25px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.scroll-mode-control > span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 8px;
+  background: white;
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mode-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-dark);
+  transition: all 0.3s ease;
+}
+
+.mode-btn:hover {
+  background: #f0f0f0;
+}
+
+.mode-btn.active {
+  background: var(--accent-green);
+  color: white;
+}
+
+/* Update guide-line for center mode */
+.guide-line.center-mode {
+  left: 50% !important;
+  transform: translateX(-50%);
+}
+
+/* Smooth transition for jumping mode */
+.music-scroll-wrapper.jumping-mode {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Color Picker */
+.color-control {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 25px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.color-control > span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.color-control input[type="color"] {
+  width: 40px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.header .control-group .mode-buttons {
+  gap: 4px;
+  padding: 2px;
+  border-radius: 6px;
+  box-shadow: none;
+  border: 1px solid #d0d7de;
+  background: #fdfdfd;
+}
+
+.header .control-group .mode-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+}
