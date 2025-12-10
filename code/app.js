@@ -1138,21 +1138,40 @@ function initApp() {
             showStatus(`Highlight color: ${highlightColor}`, 'success');
         });
     }
-    console.log('=== SETTING UP SCROLL MODE DROPDOWN ===');
-    const scrollModeSelect = document.getElementById('scrollModeSelect');
-    if (scrollModeSelect) {
-        scrollModeSelect.value = scrollMode; // initial
 
-        scrollModeSelect.addEventListener('change', (e) => {
-            scrollMode = e.target.value;
-            console.log('Scroll mode changed to:', scrollMode);
+    console.log('=== SETTING UP SCROLL MODE BUTTONS ===');
+    const scrollModeButtons = document.getElementById('scrollModeButtons');
 
-            // Reset scroll + guide line when not playing
-            if (!isPlaying) {
-                resetGame();
+    function setActiveButton(mode) {
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.mode === mode) {
+                btn.classList.add('active');
             }
-            positionGuideLine();
-            showStatus(`Scroll mode: ${scrollMode}`, 'success');
+        });
+    }
+    setActiveButton(scrollMode);
+
+    if (scrollModeButtons) {
+        scrollModeButtons.addEventListener('click', (e) => {
+            const clickedBtn = e.target.closest('.mode-btn');
+            if (!clickedBtn) return;
+
+            const newMode = clickedBtn.dataset.mode;
+
+            if (newMode !== scrollMode) {
+                scrollMode = newMode;
+                setActiveButton(scrollMode);
+
+                console.log('Scroll mode changed to:', scrollMode);
+
+                // Reset scroll + guide line when not playing
+                if (!isPlaying) {
+                    resetGame();
+                }
+                positionGuideLine();
+                showStatus(`Scroll mode: ${scrollMode}`, 'success');
+            }
         });
     }
 

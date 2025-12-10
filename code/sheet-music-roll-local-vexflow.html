@@ -7,77 +7,47 @@
     <title>Sheet Music Roll - Local VexFlow</title>
     <link rel="stylesheet" href="styles.css" />
 
-    <!-- 
-        SETUP INSTRUCTIONS:
-        1. Download VexFlow from: https://github.com/0xfe/vexflow/releases
-        2. Extract and place 'vexflow.js' in the same folder as this HTML file
-        3. Update the script src below to point to your local vexflow.js file
-        4. Open this HTML file in your browser
-        
-        OR use this CDN (if accessible):
-        <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/vexflow-debug.js"></script>
-    -->
-    <!-- VexFlow from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
 
-    <!-- Robust MusicXML Parser using xml-js library -->
     <script src="https://cdn.jsdelivr.net/npm/xml-js@1.6.11/dist/xml-js.min.js"></script>
 
-    <!-- FastXML Parser -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/fast-xml-parser/dist/fxparser.bundle.js"></script> -->
-    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/fast-xml-parser/5.2.5/fxparser.min.js""></script> -->
-
     <script>
-        // Verify libraries loaded
-        if (typeof Vex === 'undefined') {
-            console.error('❌ VexFlow failed to load');
-        } else {
-            console.log('✅ VexFlow loaded');
-        }
-
-        if (typeof xml2js === 'undefined') {
-            console.error('❌ xml-js failed to load');
-        } else {
-            console.log('✅ XML parser loaded');
-        }
-
+        // Set the global variable for the XML parser (used in app.js)
+        window.xml2js = xml2js; 
     </script>
 </head>
 
 <body>
     <div class="header">
         <div class="header-left">
-            <div class="title">♫ Sheet Music Roll</div>
-
             <div class="work-meta">
-                <div id="workTitle" class="work-title">No piece loaded</div>
-                <div id="composerName" class="work-composer">--</div>
+                <span class="work-title" id="workTitle">Sheet Music Roll</span>
+                <span class="work-composer" id="composerName">by Composer</span>
             </div>
             <div class="score-display">
                 <div class="score-item">
-                    <div class="score-label">Notes</div>
-                    <div class="score-value" id="noteCount">0</div>
+                    <span class="score-label">Tempo</span>
+                    <span class="score-value" id="currentTempo">100</span>
                 </div>
                 <div class="score-item">
-                    <div class="score-label">Tempo</div>
-                    <div class="score-value" id="currentTempo">100</div>
+                    <span class="score-label">Notes Played</span>
+                    <span class="score-value" id="noteCount">0 / 0</span>
                 </div>
             </div>
-
-
         </div>
         <div class="header-right">
             <div class="control-group upload-group">
-                <label for="fileInput" class="file-label">Choose File 📁</label>
-                <input type="file" id="fileInput" class="file-input" accept=".xml,.musicxml,.mxl" />
+                <label for="fileInput" class="file-label">📤 Upload MusicXML</label>
+                <input type="file" id="fileInput" class="file-input" accept=".xml, .musicxml" />
             </div>
+
             <div class="control-group">
-                <label for="scrollModeSelect">Scroll</label>
-                <select id="scrollModeSelect" class="select-control">
-                    <option value="smooth">Smooth</option>
-                    <option value="jumping">Jumping</option>
-                    <option value="center">Center Focus</option>
-                </select>
+                <label>Scroll Mode</label>
+                <div class="mode-buttons" id="scrollModeButtons">
+                    <button class="mode-btn" data-mode="smooth">Smooth</button>
+                    <button class="mode-btn" data-mode="jumping">Jump</button>
+                    <button class="mode-btn" data-mode="center">Center</button>
+                </div>
             </div>
 
             <div class="control-group color-group">
