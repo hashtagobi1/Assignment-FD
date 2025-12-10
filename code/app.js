@@ -724,6 +724,57 @@ function initApp() {
         return measure.xStart + measure.width * t;
     }
 
+    // Get the X position (in px) of the green guide line relative to the viewport
+    function getGuideX() {
+        const guideLine = document.querySelector('.guide-line');
+        const viewport = document.querySelector('.sheet-music-viewport');
+        if (!guideLine || !viewport) return 200;
+
+        const viewportRect = viewport.getBoundingClientRect();
+        const guideRect = guideLine.getBoundingClientRect();
+        return guideRect.left - viewportRect.left; // px from left edge of viewport
+    }
+
+    // Find which measure a given beat is in
+    function findMeasureByBeat(beat) {
+        if (!measuresData.length) return null;
+        const lastMeasure = measuresData[measuresData.length - 1];
+
+        if (beat <= 0) return measuresData[0];
+        if (beat >= lastMeasure.beatsEnd) return lastMeasure;
+
+        return (
+            measuresData.find(m => beat >= m.beatsStart && beat < m.beatsEnd) ||
+            lastMeasure
+        );
+    }
+
+    // Set scrollPos based on playbackBeat and scrollMode
+    function updateScrollForCurrentMode() {
+        const scrollWrapper = document.getElementById('scrollWrapper');
+        if (!scrollWrapper || !measuresData.length) return;
+
+        const guideX = getGuideX();
+        let targetX;
+
+        if (scrollMode === 'jumping') {
+            // Snap to the center of the current measure
+            const measure = findMeasureByBeat(playbackBeat);
+            if (measure) {
+                targetX = (measure.xStart + measure.xEnd) / 2;
+            } else {
+                targetX = beatToX(playbackBeat);
+            }
+        } else {
+            // 'smooth' and 'center' both use continuous beat-based X,
+            // only the line position differs (left vs center).
+            targetX = beatToX(playbackBeat);
+        }
+
+        scrollPos = targetX - guideX;
+        scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
+    }
+
     // Position the guide line dynamically based on rendered content
     function positionGuideLine() {
         const guideLine = document.querySelector('.guide-line');
@@ -941,17 +992,8 @@ function initApp() {
         const beatsPerSecond = bpm / 60;
         playbackBeat += beatsPerSecond * delta;
 
-        const scrollWrapper = document.getElementById('scrollWrapper');
-
-        // Where in SVG should we be for this beat?
-        const targetX = beatToX(playbackBeat);
-
-        // We keep the guide line at a fixed pixel X (200px)
-        const guideX = 200;
-        scrollPos = targetX - guideX;
-
-        // Apply scroll transform
-        scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
+        // Move scroll according to current mode
+        updateScrollForCurrentMode();
 
         // Update highlights
         highlightNotes();
@@ -1115,6 +1157,7 @@ function initApp() {
     if (scrollModeButtons) {
         setActiveModeButton(scrollMode);
         positionGuideLine();
+        updateScrollForCurrentMode();
 
         scrollModeButtons.addEventListener('click', (e) => {
             const btn = e.target.closest('.mode-btn');
@@ -1124,14 +1167,25 @@ function initApp() {
                     scrollMode = newMode;
                     console.log('Scroll mode changed to:', scrollMode);
 
+                    const scrollWrapper = document.getElementById('scrollWrapper');
+                    if (scrollWrapper) {
+                        if (scrollMode === 'jumping') {
+                            scrollWrapper.classList.add('jumping-mode');
+                        } else {
+                            scrollWrapper.classList.remove('jumping-mode');
+                        }
+                    }
+
                     // Update visual state
                     setActiveModeButton(scrollMode);
 
-                    // Reset scroll + guide line when not playing
+                    // If not playing, reset beat to 0 and align from the start
                     if (!isPlaying) {
-                        resetGame();
+                        playbackBeat = 0;
                     }
+
                     positionGuideLine();
+                    updateScrollForCurrentMode();
                     showStatus(`Scroll mode: ${scrollMode}`, 'success');
                 }
             }
