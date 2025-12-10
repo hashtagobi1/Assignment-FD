@@ -47,6 +47,9 @@ function initApp() {
     let measuresData = []; // Store measure boundaries for jumping mode
     // Color Pocker
     let highlightColor = '#2ecc71'; // Default green
+    let soundEnabled = false;
+    let synth = null;
+    let lastPlayedNoteIndex = -1;
 
     // Parse MusicXML using xml-js library for robust parsing
     function parseMusicXML(xmlText) {
@@ -798,7 +801,7 @@ function initApp() {
 
         let notesPlayed = 0;
 
-        noteElements.forEach(noteData => {
+        noteElements.forEach((noteData, index) => {
             if (!noteData.svgGroup || !noteData.components) return;
 
             // Calculate note position based on mode
@@ -824,6 +827,19 @@ function initApp() {
                     notesPlayed++;
                 }
             }
+
+            if (soundEnabled && index > lastPlayedNoteIndex) {
+                const justPassed = scrollMode === 'jumping'
+                    ? (noteData.x < scrollPos + (guideRect.left - wrapperRect.left))
+                    : (noteWorldX < guideRect.left);
+
+                if (justPassed) {
+                    playNote(noteData.note);
+                    lastPlayedNoteIndex = index;
+                }
+            }
+
+
 
             // Highlight when note is near the guide line (within 50px)
             if (distance < 50) {
@@ -1051,6 +1067,7 @@ function initApp() {
         cancelAnimationFrame(animationId);
         scrollPos = 0;
         currentMeasureIndex = 0;
+        lastPlayedNoteIndex = -1;
         document.getElementById('scrollWrapper').style.transform = 'translateX(0)';
         document.getElementById('startBtn').textContent = 'Start';
         document.getElementById('startBtn').disabled = false;
@@ -1066,7 +1083,7 @@ function initApp() {
         document.getElementById('tempoSlider').disabled = false;
 
         // Reset all highlights
-        noteElements.forEach(noteData => {
+        noteElements.forEach((noteData, index) => {
             if (noteData.svgElement) {
                 noteData.svgElement.setAttribute('fill', noteData.originalFill);
                 noteData.svgElement.setAttribute('stroke', '#000');
@@ -1106,6 +1123,7 @@ function initApp() {
         if (file) {
             // Reset game first
             resetGame();
+            lastPlayedNoteIndex = -1;
             const reader = new FileReader();
             reader.onload = function (evt) {
                 console.log('File loaded, parsing MusicXML...');
@@ -1187,6 +1205,87 @@ function initApp() {
         });
     }
 
+    // Sound toggle
+    const soundToggle = document.getElementById('soundToggle');
+    if (soundToggle) {
+        soundToggle.addEventListener('click', async function () {
+            soundEnabled = !soundEnabled;
+
+            if (soundEnabled) {
+                // Initialize Tone.js (needs user interaction to start audio context)
+                await Tone.start();
+                initializeSound();
+                this.setAttribute('data-enabled', 'true');
+                this.textContent = '🔊 On';
+                showStatus('Sound enabled! 🎵', 'success');
+            } else {
+                this.setAttribute('data-enabled', 'false');
+                this.textContent = '🔇 Off';
+                showStatus('Sound disabled', 'info');
+            }
+        });
+    }
+
     // NO DEFAULT SONG - Wait for user upload
     showStatus('✅ VexFlow Ready! Upload your MusicXML file to begin.', 'success');
+
+    // Initialize Tone.js synthesizer
+    function initializeSound() {
+        if (!synth) {
+            // Create a polyphonic synth (can play multiple notes at once for chords)
+            synth = new Tone.PolySynth(Tone.Synth, {
+                oscillator: {
+                    type: 'triangle' // Soft, pleasant sound for kids
+                },
+                envelope: {
+                    attack: 0.005,
+                    decay: 0.1,
+                    sustain: 0.3,
+                    release: 1
+                }
+            }).toDestination();
+
+            // Set volume
+            synth.volume.value = -10; // Slightly quieter
+
+            console.log('🎹 Tone.js initialized');
+        }
+    }
+
+    // Convert VexFlow note notation to Tone.js format
+    function vexflowNoteToToneNote(vexflowNote) {
+        // VexFlow format: "c/4", "d#/5", "eb/3"
+        // Tone.js format: "C4", "D#5", "Eb3"
+
+        const [note, octave] = vexflowNote.split('/');
+        return note.toUpperCase() + octave;
+    }
+
+    // Play a note or chord
+    function playNote(noteData) {
+        if (!soundEnabled || !synth) return;
+
+        try {
+            // Convert all keys in the note (handles chords)
+            const toneNotes = noteData.keys.map(vexflowNoteToToneNote);
+
+            // Calculate duration based on note type
+            const durationMap = {
+                'w': '1n',   // whole note
+                'h': '2n',   // half note
+                'q': '4n',   // quarter note
+                '8': '8n',   // eighth note
+                '16': '16n'  // sixteenth note
+            };
+
+            const duration = durationMap[noteData.duration] || '4n';
+
+            // Play the note(s) immediately
+            synth.triggerAttackRelease(toneNotes, duration);
+
+            console.log(`🎵 Playing: ${toneNotes.join(', ')} (${duration})`);
+        } catch (e) {
+            console.error('Error playing note:', e);
+        }
+    }
 }
