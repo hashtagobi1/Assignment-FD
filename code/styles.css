@@ -1,10 +1,12 @@
-@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Inter:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Fredoka:wght@400;500;600;700&display=swap");
 
 :root {
-  --bg-cream: #faf8f3;
-  --accent-green: #2ecc71;
-  --accent-blue: #3498db;
-  --text-dark: #2c3e50;
+  --bg-cream: #fffaf2;
+  --accent-green: #00c98b;
+  --accent-blue: #4b8cff;
+  --accent-yellow: #ffd75e;
+  --accent-pink: #ff7eb8;
+  --text-dark: #273043;
 }
 
 * {
@@ -14,8 +16,14 @@
 }
 
 body {
-  font-family: "Inter", sans-serif;
-  background: var(--bg-cream);
+  font-family: "Fredoka", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  background: radial-gradient(
+    circle at top left,
+    #fff4d9 0,
+    #fffaf2 45%,
+    #ffeaf5 100%
+  );
   color: var(--text-dark);
   overflow: hidden;
   height: 100vh;
@@ -25,27 +33,77 @@ body {
 
 .header {
   background: white;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 0;
   padding: 10px 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
   z-index: 100;
+  border-radius: 0 0 18px 18px;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 20px;
+}
 
+/* -----------------------------------------------------
+ *  WORK TITLE / COMPOSER META
+ * --------------------------------------------------- */
+.work-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.work-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ff7eb8;         /* fun pink for kids */
+}
+
+.work-composer {
+  font-size: 12px;
+  font-weight: 500;
+  color: #7f8c8d;
 }
 
 .title {
   font-family: "Crimson Pro", serif;
   font-size: 24px;
   font-weight: 700;
+  color: #25324a;
+}
+
+.score-display {
+  display: flex;
+  gap: 12px;
+}
+
+.score-item {
+  background: #f5f7ff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+}
+
+.score-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #7f8c8d;
+  letter-spacing: 0.06em;
+}
+
+.score-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent-green);
 }
 
 .header-right {
@@ -60,6 +118,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 4px;
+
   font-size: 12px;
 }
 
@@ -67,7 +126,8 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
-  color: #7f8c8d;
+color: #000;
+
 }
 
 .upload-group {
@@ -78,7 +138,6 @@ body {
   display: inline-block;
   padding: 6px 14px;
   background: var(--accent-blue);
-  color: white;
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
@@ -135,29 +194,6 @@ body {
   flex-direction: row;
   align-items: center;
   gap: 8px;
-}
-
-.score-display {
-  display: flex;
-  gap: 18px;
-}
-
-.score-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.score-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: #7f8c8d;
-}
-
-.score-value {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--accent-green);
 }
 
 .main-container {

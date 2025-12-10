@@ -61,6 +61,40 @@ function initApp() {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
 
+
+            // Work / piece title:
+            const workTitle =
+                xmlDoc.querySelector('work > work-title')?.textContent?.trim() ||
+                xmlDoc.querySelector('movement-title')?.textContent?.trim() ||
+                'Untitled Piece';
+            // Composer:
+            //  - fall back to first <creator> if no type="composer"
+            let composer = 'Unknown composer';
+
+            const creatorNodes = Array.from(
+                xmlDoc.querySelectorAll('identification > creator')
+            );
+
+            const composerNode =
+                creatorNodes.find(
+                    (c) => (c.getAttribute('type') || '').toLowerCase() === 'composer'
+                ) || creatorNodes[0];
+
+            if (composerNode && composerNode.textContent) {
+                composer = composerNode.textContent.trim();
+            }
+
+            // store in musicData if you like
+            musicData.workTitle = workTitle;
+            musicData.composer = composer;
+
+            // update UI
+            const workTitleEl = document.getElementById('workTitle');
+            const composerEl = document.getElementById('composerName');
+
+            if (workTitleEl) workTitleEl.textContent = workTitle;
+            if (composerEl) composerEl.textContent = `by ${composer}`;
+
             // Extract key signature (global)
             const fifths = parseInt(xmlDoc.querySelector('key fifths')?.textContent) || 0;
             const keyMap = {
@@ -1072,10 +1106,6 @@ function initApp() {
         if (file) {
             // Reset game first
             resetGame();
-
-            document.getElementById('fileName').textContent = file.name;
-            showStatus('Loading your file: ' + file.name, 'success');
-
             const reader = new FileReader();
             reader.onload = function (evt) {
                 console.log('File loaded, parsing MusicXML...');

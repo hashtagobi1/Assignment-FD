@@ -49,25 +49,25 @@
         <div class="header-left">
             <div class="title">♫ Sheet Music Roll</div>
 
-            <div class="score-display">
-                <div class="score-item">
-                    <div class="score-label">Notes</div>
-                    <div class="score-value" id="noteCount">0</div>
-                </div>
-                <div class="score-item">
-                    <div class="score-label">Tempo</div>
-                    <div class="score-value" id="currentTempo">100</div>
-                </div>
+            <div class="work-meta">
+                <div id="workTitle" class="work-title">No piece loaded</div>
+                <div id="composerName" class="work-composer">--</div>
+            </div <div class="score-display">
+            <div class="score-item">
+                <div class="score-label">Notes</div>
+                <div class="score-value" id="noteCount">0</div>
+            </div>
+            <div class="score-item">
+                <div class="score-label">Tempo</div>
+                <div class="score-value" id="currentTempo">100</div>
             </div>
         </div>
 
         <div class="header-right">
             <div class="control-group upload-group">
-                <label for="fileInput" class="file-label">Choose File</label>
+                <label for="fileInput" class="file-label">Choose File 📁</label>
                 <input type="file" id="fileInput" class="file-input" accept=".xml,.musicxml,.mxl" />
-                <span class="file-name" id="fileName">Using default song</span>
             </div>
-
             <div class="control-group">
                 <label for="scrollModeSelect">Scroll</label>
                 <select id="scrollModeSelect" class="select-control">
@@ -89,11 +89,12 @@
             </div>
 
             <div class="control-group button-group">
-                <button class="btn btn-primary" id="startBtn">Start</button>
-                <button class="btn btn-secondary" id="pauseBtn">Pause</button>
-                <button class="btn btn-secondary" id="resetBtn">Reset</button>
+                <button class="btn btn-primary" id="startBtn">▶ Start</button>
+                <button class="btn btn-secondary" id="pauseBtn">⏸ Pause</button>
+                <button class="btn btn-secondary" id="resetBtn">🔁 Reset</button>
             </div>
         </div>
+    </div>
     </div>
 
     <div id="toastContainer"></div>
