@@ -62,7 +62,7 @@ body {
 .work-title {
   font-size: 14px;
   font-weight: 700;
-  color: #ff7eb8;         /* fun pink for kids */
+  color: #ff7eb8; /* fun pink for kids */
 }
 
 .work-composer {
@@ -126,8 +126,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
-color: #000;
-
+  color: #000;
 }
 
 .upload-group {
