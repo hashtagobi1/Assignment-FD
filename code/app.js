@@ -453,7 +453,7 @@ function initApp() {
             // Render each part (treble, then bass)
             musicData.parts.forEach((part, partIdx) => {
                 const yPosition = 60 + (partIdx * stavesHeight);
-                let x = 100; // Fixed starting position for consistency
+                let x = 150; // Fixed starting position for consistency
 
                 const measures = partMeasures[partIdx];
                 const partStaves = [];
