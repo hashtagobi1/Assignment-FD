@@ -126,7 +126,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
-  color: #000;
+  text-align: center;
 }
 
 .upload-group {
@@ -140,6 +140,7 @@ body {
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
+  color: white;
   font-size: 12px;
   text-align: center;
 }
