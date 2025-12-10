@@ -46,18 +46,57 @@
 
 <body>
     <div class="header">
-        <div class="title">♫ Sheet Music Roll</div>
-        <div class="score-display">
-            <div class="score-item">
-                <div class="score-label">Notes</div>
-                <div class="score-value" id="noteCount">0</div>
+        <div class="header-left">
+            <div class="title">♫ Sheet Music Roll</div>
+
+            <div class="score-display">
+                <div class="score-item">
+                    <div class="score-label">Notes</div>
+                    <div class="score-value" id="noteCount">0</div>
+                </div>
+                <div class="score-item">
+                    <div class="score-label">Tempo</div>
+                    <div class="score-value" id="currentTempo">100</div>
+                </div>
             </div>
-            <div class="score-item">
-                <div class="score-label">Tempo</div>
-                <div class="score-value" id="currentTempo">100</div>
+        </div>
+
+        <div class="header-right">
+            <div class="control-group upload-group">
+                <label for="fileInput" class="file-label">Choose File</label>
+                <input type="file" id="fileInput" class="file-input" accept=".xml,.musicxml,.mxl" />
+                <span class="file-name" id="fileName">Using default song</span>
+            </div>
+
+            <div class="control-group">
+                <label for="scrollModeSelect">Scroll</label>
+                <select id="scrollModeSelect" class="select-control">
+                    <option value="smooth">Smooth</option>
+                    <option value="jumping">Jumping</option>
+                    <option value="center">Center Focus</option>
+                </select>
+            </div>
+
+            <div class="control-group color-group">
+                <label for="highlightColor">Highlight</label>
+                <input type="color" id="highlightColor" value="#2ecc71" />
+            </div>
+
+            <div class="control-group tempo-group">
+                <label for="tempoSlider">Tempo</label>
+                <input type="range" class="tempo-slider" id="tempoSlider" min="40" max="180" value="100" step="5" />
+                <span class="tempo-value" id="tempoValue">100 BPM</span>
+            </div>
+
+            <div class="control-group button-group">
+                <button class="btn btn-primary" id="startBtn">Start</button>
+                <button class="btn btn-secondary" id="pauseBtn">Pause</button>
+                <button class="btn btn-secondary" id="resetBtn">Reset</button>
             </div>
         </div>
     </div>
+
+    <div id="toastContainer"></div>
 
     <div class="main-container">
         <div class="sheet-music-viewport">
@@ -68,48 +107,9 @@
                 </div>
             </div>
         </div>
-
-        <div class="controls-container">
-            <div class="file-upload-section">
-                <h3>Upload MusicXML File</h3>
-                <input type="file" id="fileInput" class="file-input" accept=".xml,.musicxml,.mxl">
-                <label for="fileInput" class="file-label">Choose File</label>
-                <div class="file-name" id="fileName">Using default song</div>
-                <div id="statusMessage"></div>
-            </div>
-
-            <div class="controls">
-
-                <div class="scroll-mode-control">
-                    <span>Scroll Mode</span>
-                    <div class="mode-buttons">
-                        <button class="mode-btn active" data-mode="smooth">Smooth</button>
-                        <button class="mode-btn" data-mode="jumping">Jumping</button>
-                        <button class="mode-btn" data-mode="center">Center Focus</button>
-                    </div>
-                </div>
-                <div class="color-control">
-                    <span>Highlight Color</span>
-                    <input type="color" id="highlightColor" value="#2ecc71" />
-                </div>
-
-                <div class="tempo-control">
-                    <span>Tempo (BPM)</span>
-                    <input type="range" class="tempo-slider" id="tempoSlider" min="40" max="180" value="100" step="5">
-                    <span class="tempo-value" id="tempoValue">100 BPM</span>
-                </div>
-                <div class="button-group">
-                    <button class="btn btn-primary" id="startBtn">Start</button>
-                    <button class="btn btn-secondary" id="pauseBtn">Pause</button>
-                    <button class="btn btn-secondary" id="resetBtn">Reset</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script src="app.js"></script>
-
-
 </body>
 
 </html>

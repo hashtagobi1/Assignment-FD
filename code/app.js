@@ -1041,9 +1041,29 @@ function initApp() {
         });
     }
 
-    function showStatus(msg, type) {
-        const el = document.getElementById('statusMessage');
-        el.innerHTML = `<div class="status-message ${type}">${msg}</div>`;
+    function showStatus(msg, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = msg;
+
+        container.appendChild(toast);
+
+        // trigger transition
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        // fade out & remove
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2500);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3200);
     }
 
     // File upload
@@ -1088,44 +1108,23 @@ function initApp() {
             showStatus(`Highlight color: ${highlightColor}`, 'success');
         });
     }
-    console.log('=== SETTING UP MODE SWITCHER ===');
-    const modeButtons = document.querySelectorAll('.mode-btn');
-    modeButtons.forEach(btn => {
-        btn.addEventListener('click', function () {
-            const scrollWrapper = document.getElementById('scrollWrapper');
+    console.log('=== SETTING UP SCROLL MODE DROPDOWN ===');
+    const scrollModeSelect = document.getElementById('scrollModeSelect');
+    if (scrollModeSelect) {
+        scrollModeSelect.value = scrollMode; // initial
 
-            // Button styling
-            modeButtons.forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-
-            // Update scroll mode
-            scrollMode = this.dataset.mode;
+        scrollModeSelect.addEventListener('change', (e) => {
+            scrollMode = e.target.value;
             console.log('Scroll mode changed to:', scrollMode);
 
-            // Reset any old inline transition + class
-            scrollWrapper.classList.remove('jumping-mode');
-            scrollWrapper.style.transition = 'none';
-
-            if (scrollMode === 'jumping') {
-                // Turn on the CSS-based easing for jumps
-                scrollWrapper.classList.add('jumping-mode');
-            }
-
-            // Reset scroll state for the new mode
-            scrollPos = 0;
-            currentMeasureIndex = 0;
-            scrollWrapper.style.transform = 'translateX(0px)';
-
+            // Reset scroll + guide line when not playing
             if (!isPlaying) {
-                // Don't re-run parse/render; just reset playback state
-                document.getElementById('startBtn').textContent = 'Start';
-                document.getElementById('pauseBtn').textContent = 'Pause';
+                resetGame();
             }
-
             positionGuideLine();
             showStatus(`Scroll mode: ${scrollMode}`, 'success');
         });
-    });
+    }
 
     // NO DEFAULT SONG - Wait for user upload
     showStatus('✅ VexFlow Ready! Upload your MusicXML file to begin.', 'success');
