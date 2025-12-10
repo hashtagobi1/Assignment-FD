@@ -758,11 +758,13 @@ function initApp() {
         let targetX;
 
         if (scrollMode === 'jumping') {
-            // Snap to the center of the current measure
+            // Snap so the *start* of the bar sits under the guide line
             const measure = findMeasureByBeat(playbackBeat);
             if (measure) {
-                targetX = (measure.xStart + measure.xEnd) / 2;
+                const padding = 40; // little visual margin before the first note
+                targetX = measure.xStart + padding;
             } else {
+                // 'smooth' and 'center' both use continuous beat-based X
                 targetX = beatToX(playbackBeat);
             }
         } else {
