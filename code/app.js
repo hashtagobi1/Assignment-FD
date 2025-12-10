@@ -1029,7 +1029,7 @@ function initApp() {
             lastTime = Date.now();
             startBtn.textContent = 'Playing...';
             startBtn.disabled = true;
-            document.getElementById('tempoSlider').disabled = true;
+            // document.getElementById('tempoSlider').disabled = true;
             animate();
         }
     }
@@ -1118,12 +1118,21 @@ function initApp() {
         }
     });
 
-    // Tempo
-    document.getElementById('tempoSlider').addEventListener('input', e => {
-        bpm = parseInt(e.target.value);
-        document.getElementById('tempoValue').textContent = `${bpm} BPM`;
-        document.getElementById('currentTempo').textContent = bpm;
-    });
+    const tempoSlider = document.getElementById('tempoSlider');
+    const tempoValueEl = document.getElementById('tempoValue');
+    const currentTempoEl = document.getElementById('currentTempo');
+
+    if (tempoSlider) {
+        bpm = parseInt(tempoSlider.value);
+        if (tempoValueEl) tempoValueEl.textContent = `${bpm} BPM`;
+        if (currentTempoEl) currentTempoEl.textContent = bpm;
+
+        tempoSlider.addEventListener('input', e => {
+            bpm = parseInt(e.target.value);
+            if (tempoValueEl) tempoValueEl.textContent = `${bpm} BPM`;
+            if (currentTempoEl) currentTempoEl.textContent = bpm;
+        });
+    }
 
     // Buttons
     document.getElementById('startBtn').addEventListener('click', startGame);
@@ -1141,36 +1150,39 @@ function initApp() {
 
     console.log('=== SETTING UP SCROLL MODE BUTTONS ===');
     const scrollModeButtons = document.getElementById('scrollModeButtons');
+    const modeBtns = document.querySelectorAll('.mode-btn');
 
-    function setActiveButton(mode) {
-        document.querySelectorAll('.mode-btn').forEach(btn => {
+    function setActiveModeButton(mode) {
+        modeBtns.forEach(btn => {
             btn.classList.remove('active');
-            if (btn.dataset.mode === mode) {
+            if (btn.getAttribute('data-mode') === mode) {
                 btn.classList.add('active');
             }
         });
     }
-    setActiveButton(scrollMode);
 
     if (scrollModeButtons) {
+        setActiveModeButton(scrollMode);
+        positionGuideLine();
+
         scrollModeButtons.addEventListener('click', (e) => {
-            const clickedBtn = e.target.closest('.mode-btn');
-            if (!clickedBtn) return;
+            const btn = e.target.closest('.mode-btn');
+            if (btn) {
+                const newMode = btn.getAttribute('data-mode');
+                if (newMode && newMode !== scrollMode) {
+                    scrollMode = newMode;
+                    console.log('Scroll mode changed to:', scrollMode);
 
-            const newMode = clickedBtn.dataset.mode;
+                    // Update visual state
+                    setActiveModeButton(scrollMode);
 
-            if (newMode !== scrollMode) {
-                scrollMode = newMode;
-                setActiveButton(scrollMode);
-
-                console.log('Scroll mode changed to:', scrollMode);
-
-                // Reset scroll + guide line when not playing
-                if (!isPlaying) {
-                    resetGame();
+                    // Reset scroll + guide line when not playing
+                    if (!isPlaying) {
+                        resetGame();
+                    }
+                    positionGuideLine();
+                    showStatus(`Scroll mode: ${scrollMode}`, 'success');
                 }
-                positionGuideLine();
-                showStatus(`Scroll mode: ${scrollMode}`, 'success');
             }
         });
     }
