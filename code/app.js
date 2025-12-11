@@ -51,6 +51,7 @@ function initApp() {
     let synth = null;
     let lastPlayedNoteIndex = -1;
     let playbackBeat = 0;
+    let hasFinishedPlayback = false;
 
     // Parse MusicXML using xml-js library for robust parsing
     function parseMusicXML(xmlText) {
@@ -1075,12 +1076,19 @@ function initApp() {
 
             updateProgress(notesPlayed, noteElements.length);
             // If we've passed all notes, stop
-            if (notesPlayed >= noteElements.length) {
+            if (!hasFinishedPlayback && notesPlayed >= noteElements.length) {
+                hasFinishedPlayback = true;   // ⬅ prevent multiple triggers
+
                 console.log('🎵 All notes played! Stopping...');
+
+                // 🎉 Confetti once
+                launchConfetti();
+
                 setTimeout(() => {
                     isPlaying = false;
                     cancelAnimationFrame(animationId);
-                    showStatus('✅ Playback complete!', 'success');
+                    showStatus('🎉 Finished! Great job!', 'success');
+
                     document.getElementById('startBtn').textContent = 'Replay';
                     document.getElementById('startBtn').disabled = false;
                     document.getElementById('tempoSlider').disabled = false;
@@ -1207,6 +1215,7 @@ function initApp() {
         lastPlayedNoteIndex = -1;
         scrollToBeatSmooth(0);
         noteElements.forEach(n => n.hasPlayed = false);
+        hasFinishedPlayback = false;
 
         const scrollWrapper = document.getElementById('scrollWrapper');
         if (noteElements.length && measuresData.length) {
@@ -1273,6 +1282,31 @@ function initApp() {
         setTimeout(() => {
             toast.remove();
         }, 3200);
+    }
+
+    function launchConfetti() {
+        // Burst
+        confetti({
+            particleCount: 200,
+            spread: 2000,
+            origin: { y: 0.6 }
+        });
+
+        // Little ongoing celebration for kids 🎉
+        const end = Date.now() + 1200;
+
+        (function frame() {
+            confetti({
+                particleCount: 5,
+                startVelocity: 20,
+                spread: 70,
+                ticks: 60
+            });
+
+            if (Date.now() < end) {
+                requestAnimationFrame(frame);
+            }
+        })();
     }
 
     // File upload

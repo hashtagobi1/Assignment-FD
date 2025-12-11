@@ -2,99 +2,115 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Sheet Music Roll - Local VexFlow</title>
     <link rel="stylesheet" href="styles.css" />
 
     <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xml-js@1.6.11/dist/xml-js.min.js"></script>
-
-    <script>
-        // Set the global variable for the XML parser (used in app.js)
-        window.xml2js = xml2js; 
-    </script>
 </head>
 
 <body>
-    <div class="header">
-        <div class="header-left">
-            <div class="work-meta">
-                <span class="work-title" id="workTitle">Sheet Music Roll</span>
-                <span class="work-composer" id="composerName">by Composer</span>
-            </div>
-            <div class="score-display">
-                <div class="score-item">
-                    <span class="score-label">Tempo</span>
-                    <span class="score-value" id="currentTempo">100</span>
+    <div class="app">
+        <header class="header">
+            <div class="header-left">
+                <div class="branding">
+                    <div class="logo-circle">♪</div>
+                    <div class="branding-text">
+                        <h1 class="app-title">Sheet Music Roll</h1>
+                        <p class="app-subtitle" id="workTitle">Upload a MusicXML file to begin</p>
+                        <p class="app-meta" id="composerName"></p>
+                    </div>
                 </div>
-                <div class="score-item">
-                    <span class="score-label">Notes Played</span>
-                    <span class="score-value" id="noteCount">0 / 0</span>
+
+                <label class="file-upload">
+                    <span class="file-label">📄 Load MusicXML</span>
+                    <input id="fileInput" type="file" accept=".musicxml,.xml" />
+                </label>
+            </div>
+
+            <div class="header-right">
+                <!-- Scroll Modes -->
+                <div class="control-group">
+                    <span class="group-label">Scroll mode</span>
+                    <div id="scrollModeButtons" class="mode-buttons">
+                        <button type="button" class="mode-btn active" data-mode="smooth">Smooth</button>
+                        <button type="button" class="mode-btn" data-mode="jumping">Jump</button>
+                        <button type="button" class="mode-btn" data-mode="center">Center</button>
+                    </div>
                 </div>
-            </div>
-            <div class="progress-container">
-                <div class="progress-bar" id="progressBar">
-                    <div class="progress-fill" id="progressFill"></div>
+
+                <!-- Tempo -->
+                <div class="control-group">
+                    <label for="tempoSlider">Tempo</label>
+                    <div class="tempo-row">
+                        <input id="tempoSlider" type="range" min="40" max="200" value="100" />
+                        <span id="tempoValue" class="tempo-value">100 BPM</span>
+                    </div>
+                    <div class="tempo-current">
+                        Current: <span id="currentTempo">100</span> BPM
+                    </div>
                 </div>
-                <div class="progress-text" id="progressText">0%</div>
-            </div>
-        </div>
-        <div class="header-right">
-            <div class="control-group upload-group">
-                <label for="fileInput" class="file-label">📤 Upload Song</label>
-                <input type="file" id="fileInput" class="file-input" accept=".xml, .musicxml" />
-            </div>
 
-            <div class="control-group">
-                <label>Scroll Mode</label>
-                <div class="mode-buttons" id="scrollModeButtons">
-                    <button class="mode-btn" data-mode="smooth">Smooth</button>
-                    <button class="mode-btn" data-mode="jumping">Jump</button>
-                    <button class="mode-btn" data-mode="center">Center</button>
+                <div class="control-group">
+                    <label for="highlightColor">Highlight</label>
+                    <input id="highlightColor" type="color" value="#2ecc71" />
                 </div>
-            </div>
 
-            <div class="control-group color-group">
-                <label for="highlightColor">Highlight</label>
-                <input type="color" id="highlightColor" value="#2ecc71" />
-            </div>
-
-            <div class="control-group sound-group">
-                <label for="soundToggle">Sound</label>
-                <button class="btn btn-toggle" id="soundToggle" data-enabled="false">
-                    🔇 Off
-                </button>
-            </div>
-            <div class="control-group tempo-group">
-                <label for="tempoSlider">Tempo</label>
-                <input type="range" class="tempo-slider" id="tempoSlider" min="40" max="180" value="100" step="5" />
-                <span class="tempo-value" id="tempoValue">100 BPM</span>
-            </div>
-
-            <div class="control-group button-group">
-                <button class="btn btn-primary" id="startBtn">▶ Start</button>
-                <button class="btn btn-secondary" id="pauseBtn">⏸ Pause</button>
-                <button class="btn btn-secondary" id="resetBtn">🔁 Reset</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="toastContainer"></div>
-
-    <div class="main-container">
-        <div class="sheet-music-viewport">
-            <div class="guide-line"></div>
-            <div class="music-scroll-wrapper" id="scrollWrapper">
-                <div id="musicCanvas">
-                    <div class="loading">Loading VexFlow...</div>
+                <div class="control-group">
+                    <span class="group-label">Sound</span>
+                    <button type="button" id="soundToggle" class="pill-btn" data-enabled="false">
+                        🔇 Off
+                    </button>
                 </div>
             </div>
-        </div>
+        </header>
+
+        <main class="main">
+            <section class="info-bar">
+                <div class="info-left">
+                    <span class="info-label">Notes played:</span>
+                    <span id="noteCount" class="note-count">0 / 0</span>
+                </div>
+                <div class="info-right">
+                    <div class="progress-wrapper">
+                        <span class="progress-label">Progress</span>
+                        <div class="progress-bar">
+                            <div id="progressFill" class="progress-fill"></div>
+                        </div>
+                        <span id="progressText" class="progress-text">0%</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="sheet-music-viewport">
+                <div id="scrollWrapper">
+                    <div id="musicCanvas"></div>
+                </div>
+                <div class="guide-line"></div>
+            </section>
+
+            <footer class="bottom-bar">
+                <div class="bottom-left">
+                    <button id="startBtn" class="primary-btn">Start</button>
+                    <button id="pauseBtn" class="secondary-btn">Pause</button>
+                    <button id="resetBtn" class="secondary-btn">Reset</button>
+                </div>
+                <div class="bottom-right">
+                    <span class="helper-text">
+                        Tip: Turn sound on, then adjust tempo and scroll modes to practice.
+                    </span>
+                </div>
+            </footer>
+        </main>
+
+        <div id="toastContainer" class="toast-container"></div>
     </div>
 
     <script src="app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </body>
 
 </html>
