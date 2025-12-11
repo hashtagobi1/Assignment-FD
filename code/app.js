@@ -41,22 +41,20 @@ function initApp() {
     let noteElements = [];
     let renderer = null;
     let context = null;
-    // NEW: Scrolling mode state
+    // Scrolling mode state
     let scrollMode = 'smooth'; // 'smooth', 'jumping', or 'center'
-    let currentMeasureIndex = 0;
     let measuresData = []; // Store measure boundaries for jumping mode
-    // Color Pocker
+    // Color picker
     let highlightColor = '#2ecc71'; // Default green
     let soundEnabled = false;
     let synth = null;
-    let lastPlayedNoteIndex = -1;
     let playbackBeat = 0;
     let hasFinishedPlayback = false;
 
     // Parse MusicXML using xml-js library for robust parsing
     function parseMusicXML(xmlText) {
         // Show loading state
-        const loadingToast = showStatus('⏳ Parsing MusicXML file... This may take a moment for large files.', 'info');
+        showStatus('⏳ Parsing MusicXML file... This may take a moment for large files.', 'info');
         const startTime = performance.now();
         
         try {
@@ -75,11 +73,8 @@ function initApp() {
                 showStatus('⚠️ Large file detected. Parsing may take longer...', 'info');
             }
 
-            // Convert XML to JSON for easier parsing
-            const jsonData = xml2js(xmlText, { compact: true, spaces: 2 });
-            console.log('📋 MusicXML parsed to JSON structure');
-
-            // Also use DOMParser for querySelector convenience
+            // Use DOMParser for querySelector convenience
+            console.log('📋 Parsing MusicXML structure');
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
 
@@ -416,7 +411,6 @@ function initApp() {
         container.innerHTML = '';
         // Reset Data to prevent stale data reuse
         measuresData = [];
-        currentMeasureIndex = 0;
         scrollPos = 0;
         document.getElementById('scrollWrapper').style.transform = 'translateX(0px)';
 
@@ -1014,22 +1008,6 @@ function initApp() {
             }
         });
 
-        // Also find beams and slurs (they're separate from note groups)
-        const beams = svg.querySelectorAll('.vf-beam');
-        const curves = svg.querySelectorAll('.vf-curve');
-        console.log('Found', beams.length, 'beams and', curves.length, 'slurs/curves');
-
-        // Store beams and curves for highlighting
-        window.allBeams = Array.from(beams).map(beam => ({
-            element: beam,
-            originalFill: beam.getAttribute('fill') || '#000'
-        }));
-
-        window.allCurves = Array.from(curves).map(curve => ({
-            element: curve,
-            originalStroke: curve.getAttribute('stroke') || '#000'
-        }));
-
         console.log('✅ Extracted', noteElements.length, 'complete note components (noteheads, stems, beams, flags, slurs)');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
@@ -1297,8 +1275,6 @@ function initApp() {
         cancelAnimationFrame(animationId);
         scrollPos = 0;
         playbackBeat = 0;
-        currentMeasureIndex = 0;
-        lastPlayedNoteIndex = -1;
         scrollToBeatSmooth(0);
         noteElements.forEach(n => n.hasPlayed = false);
         hasFinishedPlayback = false;
@@ -1507,7 +1483,6 @@ function initApp() {
             
             // Reset game first
             resetGame();
-            lastPlayedNoteIndex = -1;
             
             const reader = new FileReader();
             reader.onload = function (evt) {
@@ -1587,14 +1562,7 @@ function initApp() {
                     scrollMode = newMode;
                     console.log('Scroll mode changed to:', scrollMode);
 
-                    const scrollWrapper = document.getElementById('scrollWrapper');
-                    if (scrollWrapper) {
-                        if (scrollMode === 'jumping') {
-                            scrollWrapper.classList.add('jumping-mode');
-                        } else {
-                            scrollWrapper.classList.remove('jumping-mode');
-                        }
-                    }
+                    // Scroll mode changed - no CSS class needed
 
                     // Update visual state
                     setActiveModeButton(scrollMode);
