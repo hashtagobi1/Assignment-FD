@@ -28,6 +28,45 @@ A modern, interactive sheet music visualization and playback application that pa
 - **Error Handling**: Comprehensive validation and user-friendly error messages
 - **Edge Case Handling**: Handles large files, malformed XML, empty files, etc.
 
+## 😅 Challenges
+
+I hadn't used Vexflow before so I had to watch a few videos and read some articles on it to gain familiarity with it.
+Additionally, understanding the functionality, it took a while to decipher that the scrolling was pixel based and not scrolling based on the actual beats.
+
+I was debating with scaffolding out a framework like Nuxt/Next in order to build it more robustly. 
+It would've helped with built-in typescript safety as well as a greater separation but ultimately decided it would waste time and increase complexity. 
+Working in a big 1700 line would not be the case in an actual job, there would be a bunch of modular files to prevent code breaking frequently.
+This version works offline, and submits it back to you in the format it was given in.
+
+Deciding on what scroll modes to use as well as reasoning. I decided to research and look at some of my DAWs and music games I had played in the past,
+then used the help of an LLM to implement the design once I sketched it out.
+
+Files with multiple staves only played one staff initially, so had to write a function to detect unique staff numbers per part.
+
+
+## 🐛 Bugs
+Missing Validation
+- original code would start running if no XML file present
+
+Incomplete Error Handling
+- Code for errors was quite generic saying things like "Parse Error" + message
+- The edge cases now are a lot more specific as they allow for empty files, broken XML files, no notes. etc.
+
+Beat-Based Animation System
+- Initially it seemed that the scrolling was based on the pixel position on the screen. Opposed to using the beats/musical timing.
+- This version scrolls based on the beat/BPM which also has better syncing with the audio and is more musically accurate.
+
+Reset Function
+- used to use "noteData.originalFill" which didn't existed anywhere
+- Therefore colors were not restored, leaving the green on the screen. Poor UX.
+
+Tempo Slider
+- Could not adjust slider whilst playing, not good UX.
+
+Canvas Viewing Issue
+- the initial canvas didn't show the whole sheet, and so had to adjust to the viewport to show the entire thing
+
+
 ---
 
 ## 📝 Changes from Original Code
@@ -106,15 +145,8 @@ Allows users to understand how/why things are going wrong. Reduces frustration a
 
 ### 📱 **9. Enhanced Responsive Design**
 
-
 **Why**: 
 Most mobile sites/apps are mobile first designed. This is in line with that.
-
-### 🎯 **10. Beat-Based Animation System**
-
-**Why**: 
-Initially it seemed that the scrolling was based on the pixel position on the screen. Opposed to using the beats/musical timing.
-This version scrolls based on the beat/BPM which also has better syncing with the audio and is more musically accurate.
 
 ### Libraries Used
 - **VexFlow 4.2.5**: Music notation rendering
@@ -124,6 +156,3 @@ This version scrolls based on the beat/BPM which also has better syncing with th
 - **Nunito Font**: Typography (Google Fonts)
 
 ## 🎵 Enjoy Music Note Runner!
-
-Upload your MusicXML files and watch them come to life with real-time highlighting and audio playback. Perfect for learning, practicing, or just enjoying your favorite pieces!
-
