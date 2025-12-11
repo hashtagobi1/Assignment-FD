@@ -55,8 +55,25 @@ function initApp() {
 
     // Parse MusicXML using xml-js library for robust parsing
     function parseMusicXML(xmlText) {
+        // Show loading state
+        const loadingToast = showStatus('⏳ Parsing MusicXML file... This may take a moment for large files.', 'info');
+        const startTime = performance.now();
+        
         try {
-            showStatus('Parsing MusicXML with xml-js parser...', 'success');
+            // Edge case 1: Empty file
+            if (!xmlText || xmlText.trim().length === 0) {
+                throw new Error('File is empty. Please upload a valid MusicXML file.');
+            }
+            
+            // Edge case 2: Not XML format
+            if (!xmlText.trim().startsWith('<?xml') && !xmlText.trim().startsWith('<')) {
+                throw new Error('File does not appear to be valid XML. Please check the file format.');
+            }
+            
+            // Edge case 3: Very large files (warn but continue)
+            if (xmlText.length > 10 * 1024 * 1024) { // 10MB
+                showStatus('⚠️ Large file detected. Parsing may take longer...', 'info');
+            }
 
             // Convert XML to JSON for easier parsing
             const jsonData = xml2js(xmlText, { compact: true, spaces: 2 });
@@ -335,12 +352,61 @@ function initApp() {
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
             renderMusic();
-            showStatus(`Loaded ${totalNotes} notes from ${musicData.parts.length} stave(s)!`, 'success');
+            
+            // Calculate parsing time
+            const parseTime = ((performance.now() - startTime) / 1000).toFixed(2);
+            
+            // Edge case 4: No notes found
+            if (totalNotes === 0) {
+                throw new Error('No notes found in the MusicXML file. Please check that the file contains musical content.');
+            }
+            
+            // Edge case 5: Very long pieces (warn about performance)
+            if (totalNotes > 10000) {
+                showStatus(`⚠️ Large piece detected (${totalNotes} notes). Playback may be slower.`, 'info');
+            }
+            
+            // Edge case 6: Validate parts exist
+            if (!musicData.parts || musicData.parts.length === 0) {
+                throw new Error('No musical parts found in the file. Please check the MusicXML structure.');
+            }
+            
+            showStatus(`✅ Loaded ${totalNotes} notes from ${musicData.parts.length} stave(s) in ${parseTime}s!`, 'success');
             document.getElementById('noteCount').textContent = `0 / ${totalNotes}`;
 
         } catch (e) {
-            showStatus('Parse error: ' + e.message, 'error');
-            console.error(e);
+            // Enhanced error messages with specific handling for different edge cases
+            let errorMsg = 'Parse error: ' + e.message;
+            
+            if (e.message.includes('XML') || e.message.includes('parse') || e.name === 'SyntaxError') {
+                errorMsg = '❌ XML Parsing Error: ' + e.message + ' Please ensure your file is a valid MusicXML file.';
+            } else if (e.message.includes('empty')) {
+                errorMsg = '❌ Empty File: ' + e.message;
+            } else if (e.message.includes('No notes')) {
+                errorMsg = '❌ ' + e.message;
+            } else if (e.message.includes('No musical parts')) {
+                errorMsg = '❌ ' + e.message;
+            } else if (e.name === 'TypeError' || e.name === 'ReferenceError') {
+                errorMsg = '❌ Unexpected Error: ' + e.message + ' The file may be corrupted or in an unsupported format.';
+            } else {
+                errorMsg = '❌ Error: ' + e.message + ' Please check the console for details.';
+            }
+            
+            showStatus(errorMsg, 'error');
+            console.error('Full error details:', e);
+            console.error('Error stack:', e.stack);
+            
+            // Reset UI on error
+            document.getElementById('noteCount').textContent = '0 / 0';
+            const container = document.getElementById('musicCanvas');
+            if (container) {
+                container.innerHTML = '<div style="padding: 40px; text-align: center; color: #999; font-size: 14px;">Please upload a valid MusicXML file<br/><small style="color: #bbb; margin-top: 10px; display: block;">Supported formats: .musicxml, .xml</small></div>';
+            }
+            
+            // Reset music data
+            musicData.parts = [];
+            noteElements = [];
+            measuresData = [];
         }
     }
 
@@ -1092,9 +1158,25 @@ function initApp() {
     // Animation loop – advance in beats, then scroll so that beat is under the green line
     function animate() {
         if (!isPlaying) return;
+        
+        // Edge case: Safety check for invalid state
+        if (!measuresData || measuresData.length === 0) {
+            console.warn('Animation stopped: no measures data');
+            isPlaying = false;
+            cancelAnimationFrame(animationId);
+            return;
+        }
 
         const now = Date.now();
         const delta = (now - lastTime) / 1000; // seconds
+        
+        // Edge case: Handle very large time deltas (tab switching, etc.)
+        if (delta > 1) {
+            console.warn('Large time delta detected, resetting to prevent jump');
+            lastTime = now;
+            return;
+        }
+        
         lastTime = now;
 
         // Advance musical position in beats
@@ -1167,9 +1249,15 @@ function initApp() {
     function startGame() {
         const startBtn = document.getElementById('startBtn');
 
-        // ADD THIS CHECK:
+        // Edge case: No file loaded
         if (noteElements.length === 0) {
             showStatus('⚠️ Please upload a MusicXML file first!', 'error');
+            return;
+        }
+        
+        // Edge case: Check if measures data is valid
+        if (!measuresData || measuresData.length === 0) {
+            showStatus('⚠️ Music data appears incomplete. Please try reloading the file.', 'error');
             return;
         }
 
@@ -1229,20 +1317,59 @@ function initApp() {
 
         // Reset note count display
         const noteCountEl = document.getElementById('noteCount');
-        if (noteCountEl && noteElements.length > 0) {
+        if (noteCountEl) {
+            if (noteElements.length > 0) {
             noteCountEl.textContent = `0 / ${noteElements.length}`;
+            } else {
+                noteCountEl.textContent = '0 / 0';
+            }
         }
 
         showStatus('Reset! Ready to play again.', 'success');
         document.getElementById('pauseBtn').textContent = 'Pause';
         document.getElementById('tempoSlider').disabled = false;
 
-        // Reset all highlights
+        // Reset all highlights - use the new originalColors structure
         noteElements.forEach((noteData) => {
-            if (noteData.svgElement) {
-                noteData.svgElement.setAttribute('fill', noteData.originalFill);
-                noteData.svgElement.setAttribute('stroke', '#000');
-                noteData.svgElement.style.filter = 'none';
+            if (!noteData.components || !noteData.originalColors) return;
+            
+            // Reset noteheads
+            noteData.components.noteheads.forEach((notehead, i) => {
+                const originalColor = noteData.originalColors.noteheads[i] || '#000';
+                notehead.setAttribute('fill', originalColor);
+                notehead.setAttribute('stroke', originalColor);
+            });
+            
+            // Reset stems
+            noteData.components.stems.forEach((stem, i) => {
+                const originalColor = noteData.originalColors.stems[i] || '#000';
+                stem.setAttribute('stroke', originalColor);
+                stem.setAttribute('fill', originalColor);
+            });
+            
+            // Reset flags
+            noteData.components.flags.forEach((flag, i) => {
+                flag.setAttribute('fill', noteData.originalColors.flags[i] || '#000');
+            });
+            
+            // Reset accidentals
+            noteData.components.accidentals.forEach((acc, i) => {
+                acc.setAttribute('fill', noteData.originalColors.accidentals[i] || '#000');
+            });
+            
+            // Reset annotations
+            noteData.components.annotations.forEach((ann, i) => {
+                ann.setAttribute('fill', noteData.originalColors.annotations[i] || '#000');
+            });
+            
+            // Reset articulations
+            noteData.components.articulations.forEach((art, i) => {
+                art.setAttribute('fill', noteData.originalColors.articulations[i] || '#000');
+            });
+            
+            // Reset filter/glow
+            if (noteData.svgGroup) {
+                noteData.svgGroup.style.filter = 'none';
             }
         });
     }
@@ -1260,7 +1387,7 @@ function initApp() {
 
     function showStatus(msg, type = 'info') {
         const container = document.getElementById('toastContainer');
-        if (!container) return;
+        if (!container) return null;
 
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
@@ -1273,25 +1400,38 @@ function initApp() {
             toast.classList.add('show');
         });
 
-        // fade out & remove
+        // fade out & remove (longer for info messages)
+        const duration = type === 'info' ? 4000 : 2500;
         setTimeout(() => {
             toast.classList.remove('show');
-        }, 2500);
+        }, duration);
 
         setTimeout(() => {
             toast.remove();
-        }, 3200);
+        }, duration + 700);
+
+        return toast; // Return toast element for manual removal
     }
 
     function launchConfetti() {
-        // Burst
+        // Check if libary has loaded
+        if (typeof confetti === 'undefined') {
+            console.warn('Confetti library not loaded');
+            return;
+        }
+        
+        // Mario-themed confetti (red, yellow, green, blue)
+        const marioColors = ['#FF0000', '#FFD700', '#00FF00', '#0000FF', '#FFFFFF'];
+        
+        // Burst with Mario colors
         confetti({
             particleCount: 200,
             spread: 2000,
-            origin: { y: 0.6 }
+            origin: { y: 0.6 },
+            colors: marioColors
         });
 
-        // Little ongoing celebration for kids 🎉
+        // Little ongoing celebration
         const end = Date.now() + 1200;
 
         (function frame() {
@@ -1299,31 +1439,95 @@ function initApp() {
                 particleCount: 5,
                 startVelocity: 20,
                 spread: 70,
-                ticks: 60
+                ticks: 60,
+                colors: marioColors
             });
 
             if (Date.now() < end) {
                 requestAnimationFrame(frame);
             }
         })();
+        
+        // Show Mario "Level Complete" message
+        showMarioLevelComplete();
+    }
+    
+    // Show Mario-style "Level Complete" message
+    function showMarioLevelComplete() {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        
+        const marioToast = document.createElement('div');
+        marioToast.className = 'toast success mario-level-complete';
+        marioToast.innerHTML = `
+            <div class="mario-sprite">👨‍🎮</div>
+            <div class="mario-text">
+                <div class="mario-title">LEVEL COMPLETE!</div>
+                <div class="mario-subtitle">Great job, maestro! 🎵</div>
+            </div>
+        `;
+        
+        container.appendChild(marioToast);
+        
+        // Trigger animation
+        requestAnimationFrame(() => {
+            marioToast.classList.add('show');
+        });
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            marioToast.classList.remove('show');
+            setTimeout(() => marioToast.remove(), 700);
+        }, 5000);
     }
 
-    // File upload
+    // File upload with edge case handling
     document.getElementById('fileInput').addEventListener('change', e => {
         const file = e.target.files[0];
         if (file) {
+            // Edge case: Check file size (warn if very large)
+            const maxSize = 50 * 1024 * 1024; // 50MB
+            if (file.size > maxSize) {
+                if (!confirm(`File is very large (${(file.size / 1024 / 1024).toFixed(1)}MB). This may take a while to load. Continue?`)) {
+                    e.target.value = ''; // Reset file input
+                    return;
+                }
+            }
+            
+            // Edge case: Check file type
+            const validExtensions = ['.xml', '.musicxml', '.mxl'];
+            const fileName = file.name.toLowerCase();
+            const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+            
+            if (!hasValidExtension) {
+                showStatus('⚠️ File extension not recognized. Please ensure it\'s a MusicXML file (.xml, .musicxml, .mxl)', 'error');
+                e.target.value = ''; // Reset file input
+                return;
+            }
+            
             // Reset game first
             resetGame();
             lastPlayedNoteIndex = -1;
+            
             const reader = new FileReader();
             reader.onload = function (evt) {
                 console.log('File loaded, parsing MusicXML...');
                 parseMusicXML(evt.target.result);
             };
-            reader.onerror = function () {
-                showStatus('Error reading file', 'error');
+            reader.onerror = function (error) {
+                showStatus('❌ Error reading file: ' + (error.message || 'Unknown error'), 'error');
+                console.error('FileReader error:', error);
             };
+            reader.onabort = function () {
+                showStatus('File reading was cancelled', 'info');
+            };
+            
+            try {
             reader.readAsText(file);
+            } catch (err) {
+                showStatus('❌ Could not read file: ' + err.message, 'error');
+                console.error('File read error:', err);
+            }
         }
     });
 
@@ -1431,6 +1635,69 @@ function initApp() {
 
     // NO DEFAULT SONG - Wait for user upload
     showStatus('✅ VexFlow Ready! Upload your MusicXML file to begin.', 'success');
+    
+    // Show version indicator to confirm new code loaded
+    console.log('🎵 Music Note Runner! loaded! Features: level complete animation, keyboard shortcuts');
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Don't trigger shortcuts when typing in inputs
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+            return;
+        }
+        
+        // Space: Play/Pause
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (isPlaying) {
+                pauseGame();
+            } else {
+                startGame();
+            }
+        }
+        
+        // R: Reset
+        if (e.code === 'KeyR' && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            resetGame();
+        }
+        
+        // S: Toggle sound
+        if (e.code === 'KeyS' && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            const soundToggle = document.getElementById('soundToggle');
+            if (soundToggle) {
+                soundToggle.click();
+            }
+        }
+        
+        // Left/Right arrows: Adjust tempo (when not playing)
+        if (!isPlaying) {
+            if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                const slider = document.getElementById('tempoSlider');
+                if (slider) {
+                    const newValue = Math.max(40, parseInt(slider.value) - 5);
+                    slider.value = newValue;
+                    slider.dispatchEvent(new Event('input'));
+                }
+            }
+            if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                const slider = document.getElementById('tempoSlider');
+                if (slider) {
+                    const newValue = Math.min(200, parseInt(slider.value) + 5);
+                    slider.value = newValue;
+                    slider.dispatchEvent(new Event('input'));
+                }
+            }
+        }
+    });
+    
+    // Show keyboard shortcuts hint
+    setTimeout(() => {
+        showStatus('💡 Tip: Press Space to play/pause, R to reset, S to toggle sound, ←→ to adjust tempo', 'info');
+    }, 3000);
 
     // Initialize Tone.js synthesizer
     function initializeSound() {
