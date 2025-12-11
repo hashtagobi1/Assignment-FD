@@ -1,3 +1,11 @@
+// ============================================================================
+// MUSIC NOTE RUNNER! - Sheet Music Visualization and Playback Application
+// ============================================================================
+// This application parses MusicXML files and displays them as scrolling sheet
+// music with real-time note highlighting and audio playback.
+// ============================================================================
+
+// ========== INITIALIZATION ==========
 // Wait for VexFlow to load with extended timeout for CDN
 window.addEventListener('load', function () {
     // Give the CDN more time to load (1 second for slower connections)
@@ -11,6 +19,7 @@ window.addEventListener('load', function () {
     }, 1000);
 });
 
+// ========== APP INITIALIZATION ==========
 function initApp() {
     // Check if VexFlow loaded
     if (typeof Vex === 'undefined' && typeof VexFlow === 'undefined') {
@@ -51,6 +60,7 @@ function initApp() {
     let playbackBeat = 0;
     let hasFinishedPlayback = false;
 
+    // ========== MUSIC XML PARSING ==========
     // Parse MusicXML using xml-js library for robust parsing
     function parseMusicXML(xmlText) {
         // Show loading state
@@ -405,6 +415,7 @@ function initApp() {
         }
     }
 
+    // ========== MUSIC RENDERING ==========
     // Render music with VexFlow - BOTH treble and bass clefs!
     function renderMusic() {
         const container = document.getElementById('musicCanvas');
@@ -766,6 +777,7 @@ function initApp() {
         }
     }
 
+    // ========== SCROLLING & POSITION CALCULATION ==========
     // Map a musical beat position -> SVG X coordinate
     function beatToX(beat) {
         if (!measuresData.length) return 0;
@@ -960,6 +972,7 @@ function initApp() {
         }
     }
 
+    // ========== NOTE ELEMENT EXTRACTION ==========
     // Extract ALL SVG components for each note (notehead, stem, beam, flag, etc.)
     function extractNoteSVGElements() {
         const svg = document.querySelector('#musicCanvas svg');
@@ -1012,6 +1025,7 @@ function initApp() {
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     }
 
+    // ========== NOTE HIGHLIGHTING ==========
     // Highlight ALL note components (noteheads, stems, beams, flags, accidentals)
     // Highlight ALL note components based on how close they are in *time* to playbackBeat
     function highlightNotes() {
@@ -1133,6 +1147,7 @@ function initApp() {
         }
     }
 
+    // ========== ANIMATION & PLAYBACK ==========
     // Animation loop – advance in beats, then scroll so that beat is under the green line
     function animate() {
         if (!isPlaying) return;
@@ -1223,7 +1238,7 @@ function initApp() {
         animationId = requestAnimationFrame(animate);
     }
 
-    // Controls
+    // ========== PLAYBACK CONTROLS ==========
     function startGame() {
         const startBtn = document.getElementById('startBtn');
 
@@ -1389,6 +1404,7 @@ function initApp() {
         return toast; // Return toast element for manual removal
     }
 
+    // ========== CELEBRATION & FEEDBACK ==========
     function launchConfetti() {
         // Check if libary has loaded
         if (typeof confetti === 'undefined') {
@@ -1601,12 +1617,7 @@ function initApp() {
         });
     }
 
-    // NO DEFAULT SONG - Wait for user upload
-    showStatus('✅ VexFlow Ready! Upload your MusicXML file to begin.', 'success');
-    
-    // Show version indicator to confirm new code loaded
-    console.log('🎵 Music Note Runner! loaded! Features: level complete animation, keyboard shortcuts');
-    
+    // ========== KEYBOARD SHORTCUTS ==========
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         // Don't trigger shortcuts when typing in inputs
@@ -1667,6 +1678,7 @@ function initApp() {
         showStatus('💡 Tip: Press Space to play/pause, R to reset, S to toggle sound, ←→ to adjust tempo', 'info');
     }, 3000);
 
+    // ========== AUDIO SYNTHESIS ==========
     // Initialize Tone.js synthesizer
     function initializeSound() {
         if (!synth) {
