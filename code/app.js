@@ -589,7 +589,8 @@ function initApp() {
                             dynamic: noteData.dynamic,
                             articulation: noteData.articulation,
                             keys: noteData.keys,
-                            duration: noteData.duration
+                            duration: noteData.duration,
+                            hasPlayed: false
                         });
 
                         globalNoteIndex++;
@@ -986,6 +987,14 @@ function initApp() {
 
             if (beatDiff < beatWindow) {
 
+
+                if (!noteData.hasPlayed && soundEnabled) {
+                    playNote(noteData);        // ← PLAY TREBLE AND BASS
+                    noteData.hasPlayed = true; // ← Mark so it doesn't replay
+                }
+
+
+
                 // Play sound when note is highlighted
                 if (soundEnabled && noteData.noteIndex > lastPlayedNoteIndex) {
                     playNote(noteData);  // Now this works!
@@ -1197,6 +1206,7 @@ function initApp() {
         currentMeasureIndex = 0;
         lastPlayedNoteIndex = -1;
         scrollToBeatSmooth(0);
+        noteElements.forEach(n => n.hasPlayed = false);
 
         const scrollWrapper = document.getElementById('scrollWrapper');
         if (noteElements.length && measuresData.length) {
