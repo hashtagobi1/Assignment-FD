@@ -1167,6 +1167,12 @@ function initApp() {
     function startGame() {
         const startBtn = document.getElementById('startBtn');
 
+        // ADD THIS CHECK:
+        if (noteElements.length === 0) {
+            showStatus('⚠️ Please upload a MusicXML file first!', 'error');
+            return;
+        }
+
         // If music finished, reset first
         if (startBtn.textContent === 'Replay') {
             resetGame();
@@ -1208,6 +1214,7 @@ function initApp() {
         scrollToBeatSmooth(0);
         noteElements.forEach(n => n.hasPlayed = false);
         hasFinishedPlayback = false;
+        updateProgress(0, noteElements.length || 1);
 
         const scrollWrapper = document.getElementById('scrollWrapper');
         if (noteElements.length && measuresData.length) {
