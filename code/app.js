@@ -993,14 +993,6 @@ function initApp() {
                     playNote(noteData);        // ← PLAY TREBLE AND BASS
                     noteData.hasPlayed = true; // ← Mark so it doesn't replay
                 }
-
-
-
-                // Play sound when note is highlighted
-                if (soundEnabled && noteData.noteIndex > lastPlayedNoteIndex) {
-                    playNote(noteData);  // Now this works!
-                    lastPlayedNoteIndex = noteData.noteIndex;
-                }
                 // HIGHLIGHT ALL COMPONENTS OF THIS NOTE
                 const glowFilter = 'drop-shadow(0 0 8px rgba(46, 204, 113, 0.8))';
 
