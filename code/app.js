@@ -975,6 +975,7 @@ function initApp() {
         if (noteCountEl && isPlaying) {
             noteCountEl.textContent = `${notesPlayed} / ${noteElements.length}`;
 
+            updateProgress(notesPlayed, noteElements.length);
             // If we've passed all notes, stop
             if (notesPlayed >= noteElements.length) {
                 console.log('🎵 All notes played! Stopping...');
@@ -1002,10 +1003,63 @@ function initApp() {
         const beatsPerSecond = bpm / 60;
         playbackBeat += beatsPerSecond * delta;
 
-        // Move scroll according to current mode
-        updateScrollForCurrentMode();
+        const scrollWrapper = document.getElementById('scrollWrapper');
+        const guideLine = document.querySelector('.guide-line');
+        const viewport = document.querySelector('.sheet-music-viewport');
 
-        // Update highlights
+        // Where in the SVG should we be for this beat?
+        const targetX = beatToX(playbackBeat);
+
+        // Where (in pixels) is the green line?
+        let guideX;
+
+        if (scrollMode === 'center') {
+            // Center of the visible viewport
+            guideX = viewport ? viewport.clientWidth / 2 : 200;
+        } else {
+            // Use the CSS left value (200px)
+            const left = parseFloat(getComputedStyle(guideLine).left);
+            guideX = !isNaN(left) ? left : 200;
+        }
+
+        if (scrollMode === 'smooth' || scrollMode === 'center') {
+            // Smooth / Center: follow the beat continuously
+            const rawScroll = targetX - guideX;
+
+            if (scrollMode === 'center') {
+                // Keep bar 1 still, then start scrolling as soon
+                // the music reaches the center line
+                scrollPos = Math.max(0, rawScroll);
+            } else {
+                // Smooth: always keep the current beat exactly under the line
+                scrollPos = rawScroll;
+            }
+        } else if (scrollMode === 'jumping') {
+            // Jump mode: snap the *measure* so its start sits under the green line
+            const beatsPerMeasure = musicData.beatsPerMeasure || 4;
+
+            // Estimate current measure index from the beat
+            let measureIndex = Math.floor(playbackBeat / beatsPerMeasure);
+            if (measureIndex < 0) measureIndex = 0;
+            if (measureIndex >= measuresData.length) {
+                measureIndex = measuresData.length - 1;
+            }
+
+            const currentMeasure = measuresData[measureIndex];
+
+            // Small padding so bar line isn't exactly on top of the green line
+            const alignOffset = 40; // tweak if you want the barline closer/further
+
+            // Put the left edge of the bar slightly to the left of the guide line
+            scrollPos = currentMeasure.xStart - (guideX - alignOffset);
+        }
+
+        // Never scroll past the very start
+        if (scrollPos < 0) scrollPos = 0;
+
+        scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
+
+        // Update highlights (beat-based)
         highlightNotes();
 
         animationId = requestAnimationFrame(animate);
@@ -1083,6 +1137,17 @@ function initApp() {
                 noteData.svgElement.style.filter = 'none';
             }
         });
+    }
+
+    function updateProgress(current, total) {
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+
+        if (progressFill && progressText) {
+            const percentage = Math.round((current / total) * 100);
+            progressFill.style.width = percentage + '%';
+            progressText.textContent = percentage + '%';
+        }
     }
 
     function showStatus(msg, type = 'info') {
