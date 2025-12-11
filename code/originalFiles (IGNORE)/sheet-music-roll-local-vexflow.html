@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sheet Music Roll - Local VexFlow</title>
+    <!-- 
+        SETUP INSTRUCTIONS:
+        1. Download VexFlow from: https://github.com/0xfe/vexflow/releases
+        2. Extract and place 'vexflow.js' in the same folder as this HTML file
+        3. Update the script src below to point to your local vexflow.js file
+        4. Open this HTML file in your browser
+        
+        OR use this CDN (if accessible):
+        <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/vexflow-debug.js"></script>
+    -->
+    <!-- VexFlow from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
+    
+    <!-- Robust MusicXML Parser using xml-js library -->
+    <script src="https://cdn.jsdelivr.net/npm/xml-js@1.6.11/dist/xml-js.min.js"></script>
+    
+    <script>
+        // Verify libraries loaded
+        if (typeof Vex === 'undefined') {
+            console.error('❌ VexFlow failed to load');
+        } else {
+            console.log('✅ VexFlow loaded');
+        }
+        
+        if (typeof xml2js === 'undefined') {
+            console.error('❌ xml-js failed to load');
+        } else {
+            console.log('✅ XML parser loaded');
+        }
+    </script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+        
+        :root {
+            --bg-cream: #faf8f3;
+            --accent-green: #2ecc71;
+            --accent-blue: #3498db;
+            --text-dark: #2c3e50;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-cream);
+            color: var(--text-dark);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: white;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            z-index: 100;
+        }
+        
+        .title {
+            font-family: 'Crimson Pro', serif;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .score-display {
+            display: flex;
+            gap: 25px;
+        }
+        
+        .score-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .score-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #7f8c8d;
+        }
+        
+        .score-value {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--accent-green);
+        }
+        
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sheet-music-viewport {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+        
+        .music-scroll-wrapper {
+            position: absolute;
+            left: 0;
+            top: 0;
+            padding-top: 20px;
+            will-change: transform;
+            min-height: 100%;
+            display: flex;
+            align-items: center;
+        }
+        
+        #musicCanvas {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 40px;
+        }
+        
+        .guide-line {
+            position: absolute;
+            left: 200px; /* Will be positioned dynamically by JavaScript */
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(to bottom, 
+                transparent 0%, 
+                rgba(46, 204, 113, 0.9) 10%, 
+                rgba(46, 204, 113, 0.9) 90%, 
+                transparent 100%);
+            box-shadow: 0 0 20px rgba(46, 204, 113, 0.7),
+                        0 0 40px rgba(46, 204, 113, 0.4);
+            z-index: 50;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+        
+        .controls-container {
+            background: white;
+            border-top: 2px solid #e0e0e0;
+            padding: 25px 40px 35px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+        }
+        
+        .file-upload-section {
+            max-width: 600px;
+            margin: 0 auto 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #bdc3c7;
+            text-align: center;
+        }
+        
+        .file-label {
+            display: inline-block;
+            padding: 10px 24px;
+            background: var(--accent-blue);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-name {
+            margin-top: 10px;
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        
+        .status-message {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .tempo-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 25px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .tempo-slider {
+            width: 200px;
+        }
+        
+        .tempo-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent-green);
+            min-width: 85px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        
+        .btn-primary {
+            background: var(--accent-green);
+            color: white;
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: #ecf0f1;
+            color: var(--text-dark);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">♫ Sheet Music Roll</div>
+        <div class="score-display">
+            <div class="score-item">
+                <div class="score-label">Notes</div>
+                <div class="score-value" id="noteCount">0</div>
+            </div>
+            <div class="score-item">
+                <div class="score-label">Tempo</div>
+                <div class="score-value" id="currentTempo">100</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-container">
+        <div class="sheet-music-viewport">
+            <div class="guide-line"></div>
+            <div class="music-scroll-wrapper" id="scrollWrapper">
+                <div id="musicCanvas">
+                    <div class="loading">Loading VexFlow...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls-container">
+            <div class="file-upload-section">
+                <h3>Upload MusicXML File</h3>
+                <input type="file" id="fileInput" class="file-input" accept=".xml,.musicxml,.mxl">
+                <label for="fileInput" class="file-label">Choose File</label>
+                <div class="file-name" id="fileName">Using default song</div>
+                <div id="statusMessage"></div>
+            </div>
+            
+            <div class="controls">
+                <div class="tempo-control">
+                    <span>Tempo (BPM)</span>
+                    <input type="range" class="tempo-slider" id="tempoSlider" min="40" max="180" value="100" step="5">
+                    <span class="tempo-value" id="tempoValue">100 BPM</span>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" id="startBtn">Start</button>
+                    <button class="btn btn-secondary" id="pauseBtn">Pause</button>
+                    <button class="btn btn-secondary" id="resetBtn">Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Wait for VexFlow to load with extended timeout for CDN
+        window.addEventListener('load', function() {
+            // Give the CDN more time to load (1 second for slower connections)
+            setTimeout(function() {
+                if (typeof Vex === 'undefined') {
+                    // Try again after another second
+                    setTimeout(initApp, 1000);
+                } else {
+                    initApp();
+                }
+            }, 1000);
+        });
+        
+        function initApp() {
+            // Check if VexFlow loaded
+            if (typeof Vex === 'undefined' && typeof VexFlow === 'undefined') {
+                showStatus('VexFlow not loaded. Please check setup instructions in HTML file.', 'error');
+                console.error('VexFlow not found. Make sure vexflow.js is in the same folder or use a working CDN.');
+                return;
+            }
+            
+            console.log('VexFlow loaded successfully!');
+            showStatus('VexFlow loaded! Ready to render music.', 'success');
+            
+            // Get VexFlow classes
+            const VF = typeof Vex !== 'undefined' ? Vex.Flow : VexFlow;
+            const { Renderer, Stave, StaveNote, Voice, Formatter, Accidental, StaveConnector, Beam, Annotation, Articulation, Curve } = VF;
+            
+            // Music data - now supports multiple staves/clefs
+            let musicData = {
+                keySignature: 'C',
+                timeSignature: '4/4',
+                parts: [] // Array of {clef, notes[]}
+            };
+            
+            let isPlaying = false;
+            let bpm = 100;
+            let scrollPos = 0;
+            let animationId = null;
+            let lastTime = Date.now();
+            let noteElements = [];
+            let renderer = null;
+            let context = null;
+            
+            // Parse MusicXML using xml-js library for robust parsing
+            function parseMusicXML(xmlText) {
+                try {
+                    showStatus('Parsing MusicXML with xml-js parser...', 'success');
+                    
+                    // Convert XML to JSON for easier parsing
+                    const jsonData = xml2js(xmlText, { compact: true, spaces: 2 });
+                    console.log('📋 MusicXML parsed to JSON structure');
+                    
+                    // Also use DOMParser for querySelector convenience
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                    
+                    // Extract key signature (global)
+                    const fifths = parseInt(xmlDoc.querySelector('key fifths')?.textContent) || 0;
+                    const keyMap = {
+                        '-7': 'Cb', '-6': 'Gb', '-5': 'Db', '-4': 'Ab', '-3': 'Eb', '-2': 'Bb', '-1': 'F',
+                        '0': 'C', '1': 'G', '2': 'D', '3': 'A', '4': 'E', '5': 'B', '6': 'F#', '7': 'C#'
+                    };
+                    musicData.keySignature = keyMap[fifths.toString()] || 'C';
+                    
+                    // Extract time signature (global)
+                    const beats = xmlDoc.querySelector('time beats')?.textContent || '4';
+                    const beatType = xmlDoc.querySelector('time beat-type')?.textContent || '4';
+                    musicData.timeSignature = `${beats}/${beatType}`;
+                    
+                    console.log(`🎼 Key: ${musicData.keySignature}, Time: ${musicData.timeSignature}`);
+                    
+                    musicData.parts = [];
+                    
+                    // Get ALL parts (treble and bass for piano)
+                    const parts = xmlDoc.querySelectorAll('part');
+                    console.log(`📚 Found ${parts.length} part(s) in MusicXML`);
+                    
+                    parts.forEach((part, partIdx) => {
+                        // Get divisions for this part
+                        const divisions = parseInt(part.querySelector('divisions')?.textContent) || 4;
+                        
+                        // Check if this part has multiple staves (common in piano music)
+                        const allClefs = part.querySelectorAll('clef');
+                        const uniqueStaves = new Set();
+                        allClefs.forEach(clef => {
+                            const staffNum = clef.getAttribute('number') || '1';
+                            uniqueStaves.add(staffNum);
+                        });
+                        
+                        console.log(`  📄 Part ${partIdx + 1} has ${uniqueStaves.size} stave(s)`);
+                        
+                        // If multiple staves, parse them separately
+                        if (uniqueStaves.size > 1) {
+                            // Piano part with multiple staves
+                            Array.from(uniqueStaves).sort().forEach(staffNum => {
+                                const clefForStaff = part.querySelector(`clef[number="${staffNum}"]`) || part.querySelector('clef');
+                                const clefSign = clefForStaff?.querySelector('sign')?.textContent || 'G';
+                                const clefLine = clefForStaff?.querySelector('line')?.textContent || '2';
+                                
+                                let clef = 'treble';
+                                if (clefSign === 'G' && clefLine === '2') {
+                                    clef = 'treble';
+                                } else if (clefSign === 'F' && clefLine === '4') {
+                                    clef = 'bass';
+                                } else if (clefSign === 'C') {
+                                    clef = clefLine === '3' ? 'alto' : 'tenor';
+                                } else if (clefSign === 'F') {
+                                    clef = 'bass';
+                                }
+                                
+                                console.log(`    🎼 Staff ${staffNum}: ${clef} clef (${clefSign}/${clefLine})`);
+                                parseStaff(part, staffNum, clef, divisions, partIdx, uniqueStaves, xmlDoc);
+                            });
+                        } else {
+                            // Single staff part
+                            const clefSign = part.querySelector('clef sign')?.textContent || 'G';
+                            const clefLine = part.querySelector('clef line')?.textContent || '2';
+                            
+                            let clef = 'treble';
+                            if (clefSign === 'G' && clefLine === '2') {
+                                clef = 'treble';
+                            } else if (clefSign === 'F' && clefLine === '4') {
+                                clef = 'bass';
+                            } else if (clefSign === 'C') {
+                                clef = clefLine === '3' ? 'alto' : 'tenor';
+                            } else if (clefSign === 'F') {
+                                clef = 'bass';
+                            }
+                            
+                            console.log(`  🎼 Part ${partIdx + 1}: ${clef} clef (${clefSign}/${clefLine})`);
+                            const singleStave = new Set(['1']);
+                            parseStaff(part, '1', clef, divisions, partIdx, singleStave, xmlDoc);
+                        }
+                    });
+                    
+                    // Helper function to parse a staff
+                    function parseStaff(part, staffNum, clef, divisions, partIdx, uniqueStaves, xmlDoc) {
+                        const partNotes = [];
+                        let currentTime = 0;
+                        
+                        // Parse measures in this part - filter by staff number AND handle CHORDS
+                        const measures = part.querySelectorAll('measure');
+                        const measureDirections = []; // Store tempo/dynamic markings per measure
+                        
+                        measures.forEach((measure, measureIdx) => {
+                            // Check for direction elements (tempo, dynamics text, etc.)
+                            const directions = measure.querySelectorAll('direction');
+                            directions.forEach(dir => {
+                                const dirStaff = dir.querySelector('staff')?.textContent || '1';
+                                if (dirStaff === staffNum) {
+                                    const words = dir.querySelector('direction-type words');
+                                    if (words) {
+                                        const text = words.textContent;
+                                        const placement = dir.getAttribute('placement') || 'above';
+                                        measureDirections.push({
+                                            measure: measureIdx,
+                                            text: text,
+                                            placement: placement,
+                                            time: currentTime
+                                        });
+                                    }
+                                }
+                            });
+                            
+                            const noteElements = measure.querySelectorAll('note');
+                            
+                            noteElements.forEach(noteEl => {
+                                // Check if note belongs to this staff
+                                const noteStaff = noteEl.querySelector('staff')?.textContent || '1';
+                                if (noteStaff !== staffNum) return;
+                                
+                                const duration = parseInt(noteEl.querySelector('duration')?.textContent) || divisions;
+                                const noteDuration = duration / divisions;
+                                
+                                // Handle rests
+                                if (noteEl.querySelector('rest')) {
+                                    currentTime += noteDuration;
+                                    return;
+                                }
+                                
+                                const pitch = noteEl.querySelector('pitch');
+                                if (!pitch) return;
+                                
+                                const step = pitch.querySelector('step')?.textContent;
+                                const octave = pitch.querySelector('octave')?.textContent;
+                                const alter = pitch.querySelector('alter')?.textContent;
+                                
+                                if (!step || !octave) return;
+                                
+                                let noteName = step.toLowerCase() + '/' + octave;
+                                let accidental = null;
+                                
+                                if (alter === '1') {
+                                    accidental = '#';
+                                    noteName = step.toLowerCase() + '#/' + octave;
+                                } else if (alter === '-1') {
+                                    accidental = 'b';
+                                    noteName = step.toLowerCase() + 'b/' + octave;
+                                }
+                                
+                                // Convert duration to VexFlow notation
+                                let noteType = 'q';
+                                if (noteDuration >= 4) noteType = 'w';
+                                else if (noteDuration >= 2) noteType = 'h';
+                                else if (noteDuration >= 1) noteType = 'q';
+                                else if (noteDuration >= 0.5) noteType = '8';
+                                else if (noteDuration >= 0.25) noteType = '16';
+                                
+                                // Check if this is a CHORD (multiple notes at same time)
+                                const isChord = noteEl.querySelector('chord') !== null;
+                                
+                                if (isChord && partNotes.length > 0) {
+                                    // Add to previous note's keys (making it a chord)
+                                    const prevNote = partNotes[partNotes.length - 1];
+                                    prevNote.keys.push(noteName);
+                                    if (accidental) {
+                                        prevNote.accidentals = prevNote.accidentals || [];
+                                        prevNote.accidentals.push({ key: prevNote.keys.length - 1, accidental: accidental });
+                                    }
+                                    console.log(`    🎵 Added to chord: ${noteName}`);
+                                } else {
+                                    // New note - check for dynamics and articulations
+                                    const newNote = {
+                                        keys: [noteName],
+                                        duration: noteType,
+                                        accidental: accidental,
+                                        time: currentTime
+                                    };
+                                    
+                                    // Check for dynamics (pp, p, mp, mf, f, ff, etc.)
+                                    const dynamics = noteEl.querySelector('notations dynamics');
+                                    if (dynamics) {
+                                        const dynamicType = dynamics.querySelector('*')?.tagName?.toLowerCase();
+                                        if (dynamicType) {
+                                            newNote.dynamic = dynamicType;
+                                        }
+                                    }
+                                    
+                                    // Check for articulations (staccato, accent, etc.)
+                                    const articulations = noteEl.querySelector('notations articulations');
+                                    if (articulations) {
+                                        const articulationType = articulations.querySelector('*')?.tagName?.toLowerCase();
+                                        if (articulationType) {
+                                            newNote.articulation = articulationType;
+                                        }
+                                    }
+                                    
+                                    // Check for slurs
+                                    const slur = noteEl.querySelector('notations slur');
+                                    if (slur) {
+                                        newNote.slur = slur.getAttribute('type'); // start/stop/continue
+                                    }
+                                    
+                                    partNotes.push(newNote);
+                                    currentTime += noteDuration;
+                                }
+                            });
+                        });
+                        
+                        // Get part name if available
+                        const partId = part.getAttribute('id') || `P${partIdx + 1}`;
+                        const partNameEl = xmlDoc.querySelector(`score-part[id="${partId}"] part-name`);
+                        const partName = partNameEl?.textContent || `Part ${partIdx + 1}`;
+                        const staffName = uniqueStaves.size > 1 ? `${partName} Staff ${staffNum}` : partName;
+                        
+                        musicData.parts.push({
+                            id: `${partId}_${staffNum}`,
+                            name: staffName,
+                            clef: clef,
+                            notes: partNotes,
+                            directions: measureDirections
+                        });
+                        
+                        console.log(`      ✅ Parsed ${partNotes.length} notes and ${measureDirections.length} directions from "${staffName}"`);
+                    }
+                    
+                    const totalNotes = musicData.parts.reduce((sum, p) => sum + p.notes.length, 0);
+                    
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log(`✅ PARSING COMPLETE`);
+                    console.log(`   Total staves: ${musicData.parts.length}`);
+                    musicData.parts.forEach((p, i) => {
+                        console.log(`   ${i + 1}. ${p.name} (${p.clef}): ${p.notes.length} notes`);
+                    });
+                    console.log(`   Total notes: ${totalNotes}`);
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    
+                    renderMusic();
+                    showStatus(`Loaded ${totalNotes} notes from ${musicData.parts.length} stave(s)!`, 'success');
+                    document.getElementById('noteCount').textContent = `0 / ${totalNotes}`;
+                    
+                } catch (e) {
+                    showStatus('Parse error: ' + e.message, 'error');
+                    console.error(e);
+                }
+            }
+            
+            // Render music with VexFlow - BOTH treble and bass clefs!
+            function renderMusic() {
+                const container = document.getElementById('musicCanvas');
+                container.innerHTML = '';
+                
+                if (!musicData.parts || musicData.parts.length === 0) {
+                    showStatus('No parts found in MusicXML', 'error');
+                    return;
+                }
+                
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('🎵 RENDERING MUSIC COMPONENTS');
+                console.log(`Total Parts: ${musicData.parts.length}`);
+                
+                // Group by clef type to show summary
+                const clefCounts = {};
+                musicData.parts.forEach((part, idx) => {
+                    clefCounts[part.clef] = (clefCounts[part.clef] || 0) + 1;
+                    console.log(`  Part ${idx + 1}: "${part.name}" - ${part.clef} clef (${part.notes.length} notes)`);
+                });
+                
+                console.log('Clef distribution:', Object.entries(clefCounts).map(([clef, count]) => `${count}× ${clef}`).join(', '));
+                console.log('Key:', musicData.keySignature);
+                console.log('Time:', musicData.timeSignature);
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                
+                try {
+                    // Duration to beat mapping
+                    const durationToBeats = {
+                        'w': 4, 'h': 2, 'q': 1, '8': 0.5, '16': 0.25
+                    };
+                    
+                    // Group notes into measures for EACH part
+                    const partMeasures = musicData.parts.map(part => {
+                        const measures = [];
+                        let currentMeasure = [];
+                        let currentBeats = 0;
+                        const beatsPerMeasure = 4;
+                        
+                        part.notes.forEach(noteData => {
+                            const beats = durationToBeats[noteData.duration] || 1;
+                            
+                            if (currentBeats + beats > beatsPerMeasure && currentMeasure.length > 0) {
+                                measures.push(currentMeasure);
+                                currentMeasure = [];
+                                currentBeats = 0;
+                            }
+                            
+                            currentMeasure.push(noteData);
+                            currentBeats += beats;
+                            
+                            if (currentBeats >= beatsPerMeasure) {
+                                measures.push(currentMeasure);
+                                currentMeasure = [];
+                                currentBeats = 0;
+                            }
+                        });
+                        
+                        if (currentMeasure.length > 0) {
+                            measures.push(currentMeasure);
+                        }
+                        
+                        return measures;
+                    });
+                    
+                    const maxMeasures = Math.max(...partMeasures.map(m => m.length));
+                    
+                    console.log(`📊 ${musicData.parts.length} part(s) grouped into ${maxMeasures} measures`);
+                    console.log('🎨 Using variable-width measures for proper musical spacing');
+                    
+                    // Calculate variable stave widths based on note content
+                    const calculateStaveWidth = (measureNotes) => {
+                        // Base width + spacing per note
+                        const baseWidth = 80;
+                        const noteSpacing = 40;
+                        return Math.max(180, baseWidth + (measureNotes.length * noteSpacing));
+                    };
+                    
+                    // Calculate total width needed
+                    let totalWidth = 100;
+                    const stavesHeight = 180;
+                    const canvasHeight = (musicData.parts.length * stavesHeight) + 150;
+                    
+                    // Pre-calculate all stave widths (use max width across all parts for alignment)
+                    const staveWidths = [];
+                    for (let measureIdx = 0; measureIdx < maxMeasures; measureIdx++) {
+                        let maxWidth = 180;
+                        partMeasures.forEach(measures => {
+                            if (measures[measureIdx]) {
+                                const width = calculateStaveWidth(measures[measureIdx]);
+                                maxWidth = Math.max(maxWidth, width);
+                            }
+                        });
+                        staveWidths.push(maxWidth);
+                        totalWidth += maxWidth;
+                    }
+                    
+                    console.log(`📏 Calculated ${staveWidths.length} measure widths: ${staveWidths.slice(0, 5).map(w => Math.round(w)).join(', ')}${staveWidths.length > 5 ? '...' : ''}`);
+                    
+                    // Create renderer
+                    renderer = new Renderer(container, Renderer.Backends.SVG);
+                    renderer.resize(totalWidth, canvasHeight);
+                    context = renderer.getContext();
+                    context.setFont('Arial', 10);
+                    
+                    noteElements = [];
+                    let globalNoteIndex = 0;
+                    const allStaves = []; // Store staves to connect them
+                    
+                    // Render each part (treble, then bass)
+                    musicData.parts.forEach((part, partIdx) => {
+                        const yPosition = 40 + (partIdx * stavesHeight);
+                        let x = 50; // Fixed starting position for consistency
+                        
+                        const measures = partMeasures[partIdx];
+                        const partStaves = [];
+                        
+                        // Render each measure for this part
+                        measures.forEach((measureNotes, measureIdx) => {
+                            const staveWidth = staveWidths[measureIdx];
+                            const stave = new Stave(x, yPosition, staveWidth);
+                            
+                            // First measure gets clef, key, time signature
+                            if (measureIdx === 0) {
+                                stave.addClef(part.clef);
+                                stave.addKeySignature(musicData.keySignature);
+                                stave.addTimeSignature(musicData.timeSignature);
+                                
+                                // Add tempo/direction text on first measure
+                                if (part.directions && part.directions.length > 0) {
+                                    part.directions.filter(d => d.measure === 0).forEach(dir => {
+                                        // VexFlow positions: 1=ABOVE, 2=BELOW
+                                        const position = dir.placement === 'above' ? 1 : 2;
+                                        const yShift = dir.placement === 'above' ? -10 : 10;
+                                        stave.setText(dir.text, position, { shift_y: yShift });
+                                    });
+                                }
+                            }
+                            
+                            stave.setContext(context).draw();
+                            
+                            // Store stave for connecting later
+                            partStaves.push(stave);
+                            
+                            // Create StaveNote components for this measure
+                            const staveNotes = [];
+                            measureNotes.forEach((noteData, idx) => {
+                                const isChord = noteData.keys.length > 1;
+                                console.log(`📝 "${part.name}" (${part.clef}) - M${measureIdx + 1}, Note #${globalNoteIndex + 1}:`, 
+                                    isChord ? `CHORD [${noteData.keys.join(', ')}]` : noteData.keys[0], 
+                                    noteData.duration);
+                                
+                                // Sort keys for chords (VexFlow requires bottom to top)
+                                const sortedKeys = [...noteData.keys].sort((a, b) => {
+                                    // Extract note and octave for proper sorting
+                                    const [noteA, octaveA] = a.split('/');
+                                    const [noteB, octaveB] = b.split('/');
+                                    const octaveDiff = parseInt(octaveA) - parseInt(octaveB);
+                                    if (octaveDiff !== 0) return octaveDiff;
+                                    
+                                    // If same octave, sort by note
+                                    const noteOrder = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
+                                    const cleanA = noteA.replace(/[#b]/g, '');
+                                    const cleanB = noteB.replace(/[#b]/g, '');
+                                    return noteOrder.indexOf(cleanA) - noteOrder.indexOf(cleanB);
+                                });
+                                
+                                // Create note component (handles both single notes and chords)
+                                const staveNote = new StaveNote({
+                                    keys: sortedKeys,
+                                    duration: noteData.duration,
+                                    clef: part.clef
+                                });
+                                
+                                // Add accidentals for chords
+                                if (noteData.accidentals && noteData.accidentals.length > 0) {
+                                    noteData.accidentals.forEach(acc => {
+                                        staveNote.addModifier(new Accidental(acc.accidental), acc.key);
+                                    });
+                                } else if (noteData.accidental) {
+                                    // Single note accidental
+                                    staveNote.addModifier(new Accidental(noteData.accidental), 0);
+                                }
+                                
+                                // Add dynamics (pp, p, mp, mf, f, ff, etc.)
+                                if (noteData.dynamic) {
+                                    const dynamicText = noteData.dynamic.toUpperCase();
+                                    staveNote.addModifier(new Annotation(dynamicText)
+                                        .setVerticalJustification(Annotation.VerticalJustify.BOTTOM)
+                                        .setFont('Times', 12, 'italic'));
+                                }
+                                
+                                // Add articulations (staccato, accent, tenuto, etc.)
+                                if (noteData.articulation) {
+                                    const articulationMap = {
+                                        'staccato': 'a.',
+                                        'accent': 'a>',
+                                        'tenuto': 'a-',
+                                        'staccatissimo': 'av',
+                                        'marcato': 'a^'
+                                    };
+                                    const artCode = articulationMap[noteData.articulation];
+                                    if (artCode) {
+                                        staveNote.addModifier(new Articulation(artCode));
+                                    }
+                                }
+                                
+                                staveNotes.push(staveNote);
+                                
+                                // Store reference to THIS specific note component
+                                // X position will be updated after formatting
+                                noteElements.push({
+                                    note: staveNote,
+                                    time: noteData.time,
+                                    x: x, // Temporary, will be updated with actual position
+                                    y: yPosition,
+                                    staveIndex: measureIdx,
+                                    partIndex: partIdx,
+                                    partName: part.name,
+                                    noteIndex: globalNoteIndex,
+                                    clef: part.clef,
+                                    slur: noteData.slur,
+                                    dynamic: noteData.dynamic,
+                                    articulation: noteData.articulation
+                                });
+                                
+                                globalNoteIndex++;
+                            });
+                            
+                            // Format and draw the notes with ACCURATE spacing
+                            if (staveNotes.length > 0) {
+                                const voice = new Voice({ num_beats: 4, beat_value: 4 });
+                                voice.setMode(Voice.Mode.SOFT); // Use SOFT mode for flexibility with chords
+                                
+                                try {
+                                    voice.addTickables(staveNotes);
+                                    
+                                    // Auto-beam 8th and 16th notes
+                                    const beamGroups = Beam.generateBeams(staveNotes, {
+                                        beam_rests: false,
+                                        maintain_stem_directions: true
+                                    });
+                                    
+                                    // Use formatter with proportional spacing based on duration
+                                    const formatter = new Formatter();
+                                    const formatterWidth = staveWidth - 40;
+                                    
+                                    // Format voices with proportional spacing
+                                    formatter.joinVoices([voice]).formatToStave([voice], stave, {
+                                        align_rests: true
+                                    });
+                                    
+                                    voice.draw(context, stave);
+                                    
+                                    // Draw beams
+                                    beamGroups.forEach(beam => beam.setContext(context).draw());
+                                    
+                                    // Draw slurs/curves for this measure
+                                    let slurStart = null;
+                                    measureNotes.forEach((noteData, idx) => {
+                                        if (noteData.slur === 'start') {
+                                            slurStart = idx;
+                                        } else if (noteData.slur === 'stop' && slurStart !== null) {
+                                            // Draw curve from slurStart to current note
+                                            const curve = new Curve(
+                                                staveNotes[slurStart],
+                                                staveNotes[idx],
+                                                {
+                                                    cps: [
+                                                        { x: 0, y: 10 },
+                                                        { x: 0, y: 10 }
+                                                    ]
+                                                }
+                                            );
+                                            curve.setContext(context).draw();
+                                            slurStart = null;
+                                        }
+                                    });
+                                    
+                                    // Update note positions with actual rendered positions
+                                    staveNotes.forEach((staveNote, idx) => {
+                                        const noteX = staveNote.getAbsoluteX();
+                                        const noteElement = noteElements[noteElements.length - staveNotes.length + idx];
+                                        if (noteElement) {
+                                            noteElement.x = noteX;
+                                        }
+                                    });
+                                } catch (e) {
+                                    console.error('Error formatting measure:', e);
+                                }
+                            }
+                            
+                            x += staveWidth;
+                        });
+                        
+                        allStaves.push(partStaves);
+                    });
+                    
+                    // Connect staves with brace for piano grand staff (if 2 parts)
+                    if (musicData.parts.length === 2 && allStaves.length === 2) {
+                        console.log('🎹 Adding piano grand staff connectors');
+                        const numMeasures = Math.min(allStaves[0].length, allStaves[1].length);
+                        
+                        for (let i = 0; i < numMeasures; i++) {
+                            if (allStaves[0][i] && allStaves[1][i]) {
+                                // Add brace on first measure only
+                                if (i === 0) {
+                                    const brace = new StaveConnector(allStaves[0][i], allStaves[1][i]);
+                                    brace.setType(StaveConnector.type.BRACE);
+                                    brace.setContext(context).draw();
+                                }
+                                
+                                // Add line connectors for all measures
+                                const lineLeft = new StaveConnector(allStaves[0][i], allStaves[1][i]);
+                                lineLeft.setType(StaveConnector.type.SINGLE_LEFT);
+                                lineLeft.setContext(context).draw();
+                                
+                                const lineRight = new StaveConnector(allStaves[0][i], allStaves[1][i]);
+                                lineRight.setType(StaveConnector.type.SINGLE_RIGHT);
+                                lineRight.setContext(context).draw();
+                            }
+                        }
+                    }
+                    
+                    console.log(`✅ Successfully rendered ${noteElements.length} individual note components across ${maxMeasures} measures in ${musicData.parts.length} part(s)`);
+                    
+                    // NOW extract the SVG elements for each note
+                    extractNoteSVGElements();
+                    
+                    // Position guide line dynamically based on rendered content
+                    positionGuideLine();
+                    
+                } catch (e) {
+                    showStatus('Render error: ' + e.message, 'error');
+                    console.error(e);
+                }
+            }
+            
+            // Position the guide line dynamically based on rendered content
+            function positionGuideLine() {
+                const guideLine = document.querySelector('.guide-line');
+                const canvas = document.getElementById('musicCanvas');
+                const svg = canvas.querySelector('svg');
+                
+                if (!svg || noteElements.length === 0) {
+                    console.log('⚠️ Cannot position guide line: no SVG or notes');
+                    return;
+                }
+                
+                // Find the first measure's clef/key/time signature end position
+                // Look at first 3-8 notes to get a good average of where actual notes start
+                const sampleSize = Math.min(8, Math.max(3, noteElements.length));
+                const firstNotesX = noteElements.slice(0, sampleSize).map(n => n.x).filter(x => x > 0);
+                
+                if (firstNotesX.length > 0) {
+                    // Use the minimum X (where first note starts) plus small offset
+                    const firstNoteX = Math.min(...firstNotesX);
+                    const targetX = Math.round(firstNoteX - 20); // Position 20px before first note
+                    
+                    guideLine.style.left = `${targetX}px`;
+                    console.log(`📍 Guide line positioned at X=${targetX}px (20px before first note at ${firstNoteX}px)`);
+                } else {
+                    // Fallback to a reasonable default
+                    guideLine.style.left = '200px';
+                    console.log(`📍 Guide line positioned at default 200px`);
+                }
+            }
+            
+            // Extract ALL SVG components for each note (notehead, stem, beam, flag, etc.)
+            function extractNoteSVGElements() {
+                const svg = document.querySelector('#musicCanvas svg');
+                if (!svg) return;
+                
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                console.log('🔗 EXTRACTING ALL NOTE COMPONENTS');
+                
+                // Find all note groups (VexFlow wraps each note in a g element)
+                const noteGroups = svg.querySelectorAll('.vf-stavenote');
+                console.log('Found', noteGroups.length, 'note groups in SVG');
+                
+                // Link each note group to our note elements
+                noteGroups.forEach((noteGroup, idx) => {
+                    if (idx < noteElements.length) {
+                        // Store the entire note group (includes notehead, stem, beam, flag, accidentals)
+                        noteElements[idx].svgGroup = noteGroup;
+                        noteElements[idx].svgElement = noteGroup; // For compatibility
+                        
+                        // Get all child elements of this note
+                        const noteheads = noteGroup.querySelectorAll('.vf-notehead');
+                        const stems = noteGroup.querySelectorAll('.vf-stem');
+                        const flags = noteGroup.querySelectorAll('.vf-flag');
+                        const accidentals = noteGroup.querySelectorAll('.vf-accidental');
+                        const annotations = noteGroup.querySelectorAll('.vf-annotation');
+                        const articulations = noteGroup.querySelectorAll('.vf-articulation');
+                        
+                        noteElements[idx].components = {
+                            noteheads: Array.from(noteheads),
+                            stems: Array.from(stems),
+                            flags: Array.from(flags),
+                            accidentals: Array.from(accidentals),
+                            annotations: Array.from(annotations),
+                            articulations: Array.from(articulations)
+                        };
+                        
+                        // Store original colors
+                        noteElements[idx].originalColors = {
+                            noteheads: Array.from(noteheads).map(n => n.getAttribute('fill') || '#000'),
+                            stems: Array.from(stems).map(n => n.getAttribute('stroke') || '#000'),
+                            flags: Array.from(flags).map(n => n.getAttribute('fill') || '#000'),
+                            accidentals: Array.from(accidentals).map(n => n.getAttribute('fill') || '#000'),
+                            annotations: Array.from(annotations).map(n => n.getAttribute('fill') || '#000'),
+                            articulations: Array.from(articulations).map(n => n.getAttribute('fill') || '#000')
+                        };
+                    }
+                });
+                
+                // Also find beams and slurs (they're separate from note groups)
+                const beams = svg.querySelectorAll('.vf-beam');
+                const curves = svg.querySelectorAll('.vf-curve');
+                console.log('Found', beams.length, 'beams and', curves.length, 'slurs/curves');
+                
+                // Store beams and curves for highlighting
+                window.allBeams = Array.from(beams).map(beam => ({
+                    element: beam,
+                    originalFill: beam.getAttribute('fill') || '#000'
+                }));
+                
+                window.allCurves = Array.from(curves).map(curve => ({
+                    element: curve,
+                    originalStroke: curve.getAttribute('stroke') || '#000'
+                }));
+                
+                console.log('✅ Extracted', noteElements.length, 'complete note components (noteheads, stems, beams, flags, slurs)');
+                console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+            }
+            
+            // Highlight ALL note components (noteheads, stems, beams, flags, accidentals)
+            function highlightNotes() {
+                if (noteElements.length === 0) return;
+                
+                const guideLine = document.querySelector('.guide-line');
+                const guideRect = guideLine.getBoundingClientRect();
+                const scrollWrapper = document.getElementById('scrollWrapper');
+                const wrapperRect = scrollWrapper.getBoundingClientRect();
+                
+                let notesPlayed = 0;
+                
+                noteElements.forEach(noteData => {
+                    if (!noteData.svgGroup || !noteData.components) return;
+                    
+                    const noteWorldX = wrapperRect.left + noteData.x;
+                    const distance = Math.abs(noteWorldX - guideRect.left);
+                    
+                    // Count notes that have passed the guide line
+                    if (noteWorldX < guideRect.left) {
+                        notesPlayed++;
+                    }
+                    
+                    // Highlight when note is near the guide line (within 50px)
+                    if (distance < 50) {
+                        // HIGHLIGHT ALL COMPONENTS OF THIS NOTE
+                        const highlightColor = '#2ecc71';
+                        const glowColor = 'drop-shadow(0 0 8px rgba(46, 204, 113, 0.8))';
+                        
+                        // Highlight noteheads (can be multiple in chords)
+                        noteData.components.noteheads.forEach(notehead => {
+                            notehead.setAttribute('fill', highlightColor);
+                            notehead.setAttribute('stroke', highlightColor);
+                        });
+                        
+                        // Highlight stems
+                        noteData.components.stems.forEach(stem => {
+                            stem.setAttribute('stroke', highlightColor);
+                            stem.setAttribute('fill', highlightColor);
+                        });
+                        
+                        // Highlight flags
+                        noteData.components.flags.forEach(flag => {
+                            flag.setAttribute('fill', highlightColor);
+                        });
+                        
+                        // Highlight accidentals
+                        noteData.components.accidentals.forEach(acc => {
+                            acc.setAttribute('fill', highlightColor);
+                        });
+                        
+                        // Highlight annotations (dynamics text like pp, mf, ff)
+                        noteData.components.annotations.forEach(ann => {
+                            ann.setAttribute('fill', highlightColor);
+                        });
+                        
+                        // Highlight articulations (staccato, accent, etc.)
+                        noteData.components.articulations.forEach(art => {
+                            art.setAttribute('fill', highlightColor);
+                        });
+                        
+                        // Add glow effect to entire group
+                        noteData.svgGroup.style.filter = glowColor;
+                        
+                    } else {
+                        // RESET ALL COMPONENTS
+                        noteData.components.noteheads.forEach((notehead, i) => {
+                            notehead.setAttribute('fill', noteData.originalColors.noteheads[i] || '#000');
+                            notehead.setAttribute('stroke', noteData.originalColors.noteheads[i] || '#000');
+                        });
+                        
+                        noteData.components.stems.forEach((stem, i) => {
+                            stem.setAttribute('stroke', noteData.originalColors.stems[i] || '#000');
+                            stem.setAttribute('fill', noteData.originalColors.stems[i] || '#000');
+                        });
+                        
+                        noteData.components.flags.forEach((flag, i) => {
+                            flag.setAttribute('fill', noteData.originalColors.flags[i] || '#000');
+                        });
+                        
+                        noteData.components.accidentals.forEach((acc, i) => {
+                            acc.setAttribute('fill', noteData.originalColors.accidentals[i] || '#000');
+                        });
+                        
+                        noteData.components.annotations.forEach((ann, i) => {
+                            ann.setAttribute('fill', noteData.originalColors.annotations[i] || '#000');
+                        });
+                        
+                        noteData.components.articulations.forEach((art, i) => {
+                            art.setAttribute('fill', noteData.originalColors.articulations[i] || '#000');
+                        });
+                        
+                        noteData.svgGroup.style.filter = 'none';
+                    }
+                });
+                
+                // Update progress display
+                const noteCountEl = document.getElementById('noteCount');
+                if (noteCountEl && isPlaying) {
+                    noteCountEl.textContent = `${notesPlayed} / ${noteElements.length}`;
+                    
+                    // Check if all notes have been played
+                    if (notesPlayed >= noteElements.length) {
+                        console.log('🎵 All notes played! Stopping...');
+                        setTimeout(() => {
+                            isPlaying = false;
+                            cancelAnimationFrame(animationId);
+                            showStatus('✅ Playback complete!', 'success');
+                            document.getElementById('startBtn').textContent = 'Replay';
+                            document.getElementById('startBtn').disabled = false;
+                            document.getElementById('tempoSlider').disabled = false;
+                        }, 500); // Small delay to let last note highlight
+                    }
+                }
+                
+                // Highlight beams near the guide line
+                if (window.allBeams) {
+                    window.allBeams.forEach(beamData => {
+                        const beamBBox = beamData.element.getBBox();
+                        const beamWorldX = wrapperRect.left + beamBBox.x;
+                        const distance = Math.abs(beamWorldX - guideRect.left);
+                        
+                        if (distance < 100) {
+                            beamData.element.setAttribute('fill', '#2ecc71');
+                        } else {
+                            beamData.element.setAttribute('fill', beamData.originalFill);
+                        }
+                    });
+                }
+                
+                // Highlight slurs/curves near the guide line
+                if (window.allCurves) {
+                    window.allCurves.forEach(curveData => {
+                        const curveBBox = curveData.element.getBBox();
+                        const curveWorldX = wrapperRect.left + curveBBox.x;
+                        const distance = Math.abs(curveWorldX - guideRect.left);
+                        
+                        if (distance < 150) {
+                            curveData.element.setAttribute('stroke', '#2ecc71');
+                            curveData.element.setAttribute('stroke-width', '2');
+                            curveData.element.style.filter = 'drop-shadow(0 0 8px rgba(46, 204, 113, 0.6))';
+                        } else {
+                            curveData.element.setAttribute('stroke', curveData.originalStroke);
+                            curveData.element.setAttribute('stroke-width', '1');
+                            curveData.element.style.filter = 'none';
+                        }
+                    });
+                }
+            }
+            
+            // Animation
+            function animate() {
+                if (!isPlaying) return;
+                
+                const now = Date.now();
+                const delta = (now - lastTime) / 1000;
+                lastTime = now;
+                
+                const scrollSpeed = (bpm / 60) * 100;
+                scrollPos += scrollSpeed * delta;
+                
+                document.getElementById('scrollWrapper').style.transform = 
+                    `translateX(-${scrollPos}px)`;
+                
+                highlightNotes();
+                
+                animationId = requestAnimationFrame(animate);
+            }
+            
+            // Controls
+            function startGame() {
+                const startBtn = document.getElementById('startBtn');
+                
+                // If music finished, reset first
+                if (startBtn.textContent === 'Finished' || startBtn.textContent === 'Replay') {
+                    resetGame();
+                    // Small delay to allow reset to complete
+                    setTimeout(() => {
+                        startGame();
+                    }, 100);
+                    return;
+                }
+                
+                if (!isPlaying) {
+                    isPlaying = true;
+                    lastTime = Date.now();
+                    startBtn.textContent = 'Playing...';
+                    startBtn.disabled = true;
+                    document.getElementById('tempoSlider').disabled = true;
+                    animate();
+                }
+            }
+            
+            function pauseGame() {
+                isPlaying = !isPlaying;
+                if (isPlaying) {
+                    lastTime = Date.now();
+                    animate();
+                    document.getElementById('pauseBtn').textContent = 'Pause';
+                } else {
+                    cancelAnimationFrame(animationId);
+                    document.getElementById('pauseBtn').textContent = 'Resume';
+                }
+            }
+            
+            function resetGame() {
+                isPlaying = false;
+                cancelAnimationFrame(animationId);
+                scrollPos = 0;
+                document.getElementById('scrollWrapper').style.transform = 'translateX(0)';
+                document.getElementById('startBtn').textContent = 'Start';
+                document.getElementById('startBtn').disabled = false;
+                
+                // Reset note count display
+                const noteCountEl = document.getElementById('noteCount');
+                if (noteCountEl && noteElements.length > 0) {
+                    noteCountEl.textContent = `0 / ${noteElements.length}`;
+                }
+                
+                showStatus('Reset! Ready to play again.', 'success');
+                document.getElementById('pauseBtn').textContent = 'Pause';
+                document.getElementById('tempoSlider').disabled = false;
+                
+                // Reset all highlights
+                noteElements.forEach(noteData => {
+                    if (noteData.svgElement) {
+                        noteData.svgElement.setAttribute('fill', noteData.originalFill);
+                        noteData.svgElement.setAttribute('stroke', '#000');
+                        noteData.svgElement.style.filter = 'none';
+                    }
+                });
+            }
+            
+            function showStatus(msg, type) {
+                const el = document.getElementById('statusMessage');
+                el.innerHTML = `<div class="status-message ${type}">${msg}</div>`;
+            }
+            
+            // File upload
+            document.getElementById('fileInput').addEventListener('change', e => {
+                const file = e.target.files[0];
+                if (file) {
+                    // Reset game first
+                    resetGame();
+                    
+                    document.getElementById('fileName').textContent = file.name;
+                    showStatus('Loading your file: ' + file.name, 'success');
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        console.log('File loaded, parsing MusicXML...');
+                        parseMusicXML(evt.target.result);
+                    };
+                    reader.onerror = function() {
+                        showStatus('Error reading file', 'error');
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            
+            // Tempo
+            document.getElementById('tempoSlider').addEventListener('input', e => {
+                bpm = parseInt(e.target.value);
+                document.getElementById('tempoValue').textContent = `${bpm} BPM`;
+                document.getElementById('currentTempo').textContent = bpm;
+            });
+            
+            // Buttons
+            document.getElementById('startBtn').addEventListener('click', startGame);
+            document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+            document.getElementById('resetBtn').addEventListener('click', resetGame);
+            
+            // NO DEFAULT SONG - Wait for user upload
+            showStatus('✅ VexFlow Ready! Upload your MusicXML file to begin.', 'success');
+        }
+    </script>
+</body>
+</html>
