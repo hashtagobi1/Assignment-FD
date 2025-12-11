@@ -726,6 +726,95 @@ function initApp() {
         return measure.xStart + measure.width * t;
     }
 
+    // Move the score so that a given beat sits under the green line
+    function scrollToBeat(beat) {
+        const scrollWrapper = document.getElementById('scrollWrapper');
+        const guideLine = document.querySelector('.guide-line');
+        if (!scrollWrapper || !guideLine || !measuresData.length) return;
+
+        const beatsPerMeasure = musicData.beatsPerMeasure || 4;
+
+        // Where on the screen is the guide line?
+        let guideX;
+        if (scrollMode === 'center') {
+            const viewport = document.querySelector('.sheet-music-viewport');
+            const rect = viewport?.getBoundingClientRect();
+            guideX = rect ? rect.width / 2 : 200;
+        } else {
+            guideX = parseInt(guideLine.style.left, 10) || 200;
+        }
+
+        if (scrollMode === 'jumping') {
+            // Snap to the start of the measure that contains this beat
+            let measureIndex = Math.floor(beat / beatsPerMeasure);
+            if (measureIndex < 0) measureIndex = 0;
+            if (measureIndex >= measuresData.length) {
+                measureIndex = measuresData.length - 1;
+            }
+
+            const currentMeasure = measuresData[measureIndex];
+            const alignOffset = 20; // little padding so barline isn't *exactly* on the line
+            scrollPos = currentMeasure.xStart - (guideX - alignOffset);
+        } else {
+            // smooth + center: continuous beat → x mapping
+            const targetX = beatToX(beat);
+            scrollPos = targetX - guideX;
+        }
+
+        // Don’t scroll into negative space
+        if (scrollPos < 0) scrollPos = 0;
+
+        scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
+    }
+
+    // Smoothly animate the scroll so a given beat ends up under the green line
+    function scrollToBeatSmooth(beat, durationMs = 400) {
+        if (isPlaying) {
+            // Don't fight the main animation loop
+            scrollToBeat(beat);
+            return;
+        }
+
+        const scrollWrapper = document.getElementById('scrollWrapper');
+        if (!scrollWrapper) return;
+
+        // 1) Compute the target scrollPos using the normal helper
+        const startPos = scrollPos;
+        scrollToBeat(beat);           // this sets scrollPos to the final value
+        const endPos = scrollPos;
+
+        // If we're already there, nothing to do
+        if (Math.abs(endPos - startPos) < 1) {
+            scrollWrapper.style.transform = `translateX(-${endPos}px)`;
+            return;
+        }
+
+        // 2) Animate from startPos -> endPos
+        scrollPos = startPos; // reset back so we can interpolate
+        const startTime = performance.now();
+
+        function step(now) {
+            const elapsed = now - startTime;
+            const t = Math.min(1, elapsed / durationMs);
+
+            // smoothstep easing (feels nicer than linear)
+            const eased = t * t * (3 - 2 * t);
+
+            scrollPos = startPos + (endPos - startPos) * eased;
+            scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
+
+            if (t < 1 && !isPlaying) {
+                requestAnimationFrame(step);
+            } else {
+                // snap to final to avoid rounding drift
+                scrollPos = endPos;
+                scrollWrapper.style.transform = `translateX(-${scrollPos}px)`;
+            }
+        }
+
+        requestAnimationFrame(step);
+    }
+
     // Get the X position (in px) of the green guide line relative to the viewport
     function getGuideX() {
         const guideLine = document.querySelector('.guide-line');
@@ -1107,6 +1196,7 @@ function initApp() {
         playbackBeat = 0;
         currentMeasureIndex = 0;
         lastPlayedNoteIndex = -1;
+        scrollToBeatSmooth(0);
 
         const scrollWrapper = document.getElementById('scrollWrapper');
         if (noteElements.length && measuresData.length) {
